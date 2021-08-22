@@ -1,0 +1,3 @@
+boxx
+opencv-contrib-python
+tqdm
