@@ -116,6 +116,13 @@ class Stereo:
         self._set_map()
         return self
 
+    # TODO
+    def depth_to_disparity(self, depth):
+        raise NotImplementedError()
+
+    def disparity_to_depth(self, disparity):
+        raise NotImplementedError()
+
 
 if __name__ == "__main__":
     pass
