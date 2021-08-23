@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import boxx
-from boxx import npa, imread
+from boxx import imread
 
 import os
 import cv2
@@ -82,7 +82,7 @@ class ArucoFeatureLib(MetaFeatureLib):
 
         aruco_temp_str = "480 240 0 580 240 0 580 340 0 480 340 0 480 120 0 580 120 0 580 220 0 480 220 0 480 0 0 580 0 0 580 100 0 480 100 0 0 360 0 100 360 0 100 460 0 0 460 0 480 360 0 580 360 0 580 460 0 480 460 0 480 480 0 580 480 0 580 580 0 480 580 0 360 480 0 460 480 0 460 580 0 360 580 0 240 480 0 340 480 0 340 580 0 240 580 0 120 480 0 220 480 0 220 580 0 120 580 0 0 480 0 100 480 0 100 580 0 0 580 0 0 240 0 100 240 0 100 340 0 0 340 0 0 120 0 100 120 0 100 220 0 0 220 0 0 0 0 100 0 0 100 100 0 0 100 0 120 0 0 220 0 0 220 100 0 120 100 0 240 0 0 340 0 0 340 100 0 240 100 0 360 0 0 460 0 0 460 100 0 360 100 0 120 120 0 220 120 0 220 220 0 120 220 0 240 120 0 340 120 0 340 220 0 240 220 0 360 120 0 460 120 0 460 220 0 360 220 0 120 360 0 220 360 0 220 460 0 120 460 0 360 360 0 460 360 0 460 460 0 360 460 0 240 360 0 340 360 0 340 460 0 240 460 0 120 240 0 220 240 0 220 340 0 120 340 0 360 240 0 460 240 0 460 340 0 360 340 0"
         self.object_points = np.float32(
-            npa(boxx.findints(aruco_temp_str)).reshape(-1, 3) / 1000.0
+            np.array(boxx.findints(aruco_temp_str)).reshape(-1, 3) / 1000.0
         )
         self.aruco_dict_idx = cv2.aruco.DICT_6X6_250
 
@@ -206,7 +206,7 @@ class Cam(dict):
             print(self)
         return False
 
-    def stereo(caml, camr):
+    def stereo_with(caml, camr):
         K1, D1, K2, D2 = (
             caml.K,
             caml.D,
@@ -223,7 +223,7 @@ class Cam(dict):
 
     def vis_stereo(caml, camr, stereo=None, visn=4):
         if stereo is None:
-            stereo = caml.align_stereo(camr)
+            stereo = caml.stereo_with(camr)
         visdir = TEMP + "/calibrating-stereo-vis/"
         os.makedirs(visdir, exist_ok=True)
         for key in caml.valid_keys_intersection(camr)[:visn]:
@@ -249,16 +249,23 @@ class Cam(dict):
         T = utils.mean_Ts(Ts)
         return T
 
-    def project_cam2_depth(cam1, cam2, depth2, T=None):
+    def project_cam2_depth(cam1, cam2, depth2, T=None, interpolation=1.5):
         if T is None:
             T = cam1.get_T_cam2_in_self(cam2)
-        point_cloud2 = utils.depth_to_point_cloud(depth2, cam2.K)
+        if interpolation:
+            interpolation_rate = cam1.K[0, 0] / cam2.K[0, 0] * interpolation
+            interpolation_rate = max(interpolation_rate, 1)
+        else:
+            interpolation_rate = 1
+        point_cloud2 = utils.depth_to_point_cloud(
+            depth2, cam2.K, interpolation_rate=interpolation_rate
+        )
         point_cloud1 = utils.apply_T_to_point_cloud(T, point_cloud2)
         depth1 = utils.point_cloud_to_depth(point_cloud1, cam1.K, cam1.xy)
         return depth1
 
     def vis_project_align(self, img, depth, undistort=False):
-        if undistort:
+        if not undistort:
             img = cv2.undistort(img, self.K, self.D)
         depth_uint8 = np.uint8(depth / depth.max() * 255)
         depth_vis = np.uint8(cv2.applyColorMap(depth_uint8, cv2.COLORMAP_JET) * 0.75)
@@ -336,18 +343,16 @@ if __name__ == "__main__":
         enable_cache=True,
     )
 
-    stereo = Cam.stereo(caml, camr)
+    stereo = Cam.stereo_with(caml, camr)
 
-    T = caml.get_T_cam2_in_self(camd)
+    T_camd_in_caml = caml.get_T_cam2_in_self(camd)
     keys = caml.valid_keys_intersection(camd)
     key = keys[4]
     imgl = imread(caml[key]["path"])
-    undis = cv2.undistort(imgl, caml.K, caml.D)
     color_path_d = camd[key]["path"]
-    imgd = imread(color_path_d)
     depthd = imread(color_path_d.replace("color.jpg", "depth.png"))
     depthd = np.float32(depthd / 1000)
 
-    depthl = caml.project_cam2_depth(camd, depthd, T)
+    depthl = caml.project_cam2_depth(camd, depthd, T_camd_in_caml)
 
     caml.vis_project_align(imgl, depthl, undistort=False)

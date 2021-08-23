@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
 import boxx
-from boxx import *
-from boxx import npa
 import cv2
 import numpy as np
 
@@ -30,17 +28,28 @@ def apply_T_to_point_cloud(T, point_cloud):
     return (T @ new_point_cloud.T).T[:, :3]
 
 
-def depth_to_point_cloud(depth, K, resize=1):
+def depth_to_point_cloud(depth, K, interpolation_rate=1):
     # depth to point cloud
     # K@Ps/z=xy
-    # TODO resize
     assert depth.ndim == 2
-    ys, xs = np.mgrid[
-        : depth.shape[0], : depth.shape[1],
-    ]
+    y, x = depth.shape
+    if interpolation_rate == 1:
+        ys, xs = np.mgrid[
+            :y, :x,
+        ]
 
-    _points = (npa([xs, ys, np.ones_like(xs)]) * depth[None])[:, depth != 0].T
-    point_cloud = (np.linalg.inv(K) @ _points.T).T
+        points = (np.array([xs, ys, np.ones_like(xs)]) * depth[None])[:, depth != 0].T
+    else:
+        y_, x_ = int(round(y * interpolation_rate)), int(round(x * interpolation_rate))
+        depth_ = cv2.resize(depth, (x_, y_), interpolation=cv2.INTER_NEAREST)
+        ys, xs = np.mgrid[
+            :y_, :x_,
+        ]
+        points = (np.array([xs, ys, np.ones_like(xs)]) * depth_[None])[:, depth_ != 0].T
+        points[:, 0] /= interpolation_rate
+        points[:, 1] /= interpolation_rate
+
+    point_cloud = (np.linalg.inv(K) @ points.T).T
     return point_cloud
 
 
@@ -48,7 +57,7 @@ def point_cloud_to_depth(points, K, xy):
     xyzs = (K @ points.T).T
     xyzs[:, :2] /= xyzs[:, 2:]
 
-    xyzs = npa - sorted(xyzs, key=lambda xyz: -xyz[2])
+    xyzs = np.array(sorted(xyzs, key=lambda xyz: -xyz[2]))
     mask = (
         (xyzs[:, 0] >= 0)
         & (xyzs[:, 0] < xy[0])
@@ -60,10 +69,6 @@ def point_cloud_to_depth(points, K, xy):
     depth = np.zeros(xy[::-1])
     depth[np.int32(xyzs[:, 1].round(0)), np.int32(xyzs[:, 0].round(0))] = xyzs[:, 2]
     return depth
-    # test point_cloud_to_depth
-    depth2 = point_cloud_to_depth(points_in_m, intrinsicm["K"], intrinsicm["xy"])
-    boxx.shows(depth, depth2, boxx.norma)
-    assert (depth == depth2).all()
 
 
 def mean_Ts(Ts):
