@@ -16,9 +16,10 @@ pip install calibrating
 ```
 ## ▮ Run Example
 Example images are captured by paired_stereo_and_depth_cams:   
- ![](https://github.com/yl-data/calibrating_example_data/blob/master/paired_stereo_and_depth_cams.jpg?raw=true)
+<img src="https://github.com/yl-data/calibrating_example_data/raw/master/paired_stereo_and_depth_cams.jpg?raw=true" alt="" style="max-height:250px;">
 
 ```bash
+pip install calibrating
 # Prepare example data: checkboard images of paired stereo and depth cameras
 git clone https://github.com/yl-data/calibrating_example_data
 
@@ -35,10 +36,3 @@ Detailed example code with comments: [example/checkboard_example.py](example/che
 Or Chinese Version: [example/checkboard_example_cn.py (中文注释)](example/checkboard_example_cn.py)
 
 
-
-<style>
-
-img{
-    max-height:350px;
-}
-</style>
