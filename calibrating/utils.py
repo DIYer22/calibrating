@@ -33,6 +33,8 @@ def depth_to_point_cloud(depth, K, interpolation_rate=1):
     # K@Ps/z=xy
     assert depth.ndim == 2
     y, x = depth.shape
+    if depth.dtype == np.uint16:
+        depth = np.float32(depth / 1000.0)
     if interpolation_rate == 1:
         ys, xs = np.mgrid[
             :y, :x,

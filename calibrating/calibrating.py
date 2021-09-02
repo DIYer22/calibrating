@@ -37,15 +37,15 @@ class MetaFeatureLib:
 
 
 class CheckboardFeatureLib(MetaFeatureLib):
-    def __init__(self, checkboard=(11, 8), gap_mm=25):
+    def __init__(self, checkboard=(11, 8), size_mm=25):
         self.checkboard = checkboard
-        self.gap_mm = gap_mm
+        self.size_mm = size_mm
         self.object_points = np.zeros(
             (self.checkboard[0] * self.checkboard[1], 3), np.float32
         )
         self.object_points[:, :2] = np.float32(
             np.mgrid[: self.checkboard[0], : self.checkboard[1]].T.reshape(-1, 2)
-            * self.gap_mm
+            * self.size_mm
             / 1000
         )
 
@@ -166,7 +166,6 @@ class Cam(dict):
         valid_keys = self.valid_keys()
         self.image_points = [self[key]["image_points"] for key in valid_keys]
         self.object_points = feature_lib.object_points
-        boxx.g()
         self.retval, self.K, self.D, rvecs, tvecs = cv2.calibrateCamera(
             [feature_lib.object_points] * len(self.image_points),
             self.image_points,
@@ -186,7 +185,7 @@ class Cam(dict):
             for key, d in tqdm(self.items()):
                 vis = feature_lib.vis(d, self)
                 boxx.imsave(visdir + "/" + key + ".jpg", vis)
-            print("Save image_points vis in dir:", visdir)
+            print("Save visualization of feature points in dir:", visdir)
         self._cache(do_cache=True)
 
     def _cache(self, do_cache=False):
@@ -320,10 +319,11 @@ if __name__ == "__main__":
 
     root = os.path.abspath(
         os.path.join(
-            __file__, "../../../calibrating_example_data/paired_stereo_and_depth_cams"
+            __file__,
+            "../../../calibrating_example_data/paired_stereo_and_depth_cams_checkboard",
         )
     )
-    feature_lib = ArucoFeatureLib()
+    feature_lib = CheckboardFeatureLib(checkboard=(7, 10), size_mm=22.564)
     caml = Cam(
         glob(os.path.join(root, "*", "stereo_l.jpg")),
         feature_lib,
@@ -346,8 +346,7 @@ if __name__ == "__main__":
     stereo = Cam.stereo_with(caml, camr)
 
     T_camd_in_caml = caml.get_T_cam2_in_self(camd)
-    keys = caml.valid_keys_intersection(camd)
-    key = keys[4]
+    key = caml.valid_keys_intersection(camd)[0]
     imgl = imread(caml[key]["path"])
     color_path_d = camd[key]["path"]
     depthd = imread(color_path_d.replace("color.jpg", "depth.png"))
