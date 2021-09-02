@@ -57,7 +57,7 @@ class Stereo:
             return cv2.imread(path_or_np)[..., ::-1]
         return path_or_np
 
-    def align(self, pair):
+    def rectify(self, pair):
         ir1 = cv2.remap(
             self._get_img(pair[0]), self.l_maps[0], self.l_maps[1], cv2.INTER_LANCZOS4
         )
@@ -69,7 +69,7 @@ class Stereo:
     @staticmethod
     def vis(pair, n_line=21, thickness=0.03):
         """
-        Draw lines on stereo image pairs, two cases of horizontal align and vertical align.
+        Draw lines on stereo image pairs, two cases of horizontal rectify and vertical rectify.
         Input: image numpy pairs.
         """
         colors = [

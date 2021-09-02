@@ -228,10 +228,10 @@ class Cam(dict):
         for key in caml.valid_keys_intersection(camr)[:visn]:
             imgl = boxx.imread(caml[key]["path"])
             imgr = boxx.imread(camr[key]["path"])
-            vis_align = stereo.vis(stereo.align([imgl, imgr]))
-            boxx.imsave(visdir + key + ".jpg", vis_align)
+            vis_rectify = stereo.vis(stereo.rectify([imgl, imgr]))
+            boxx.imsave(visdir + key + ".jpg", vis_rectify)
         print("Save stereo vis to:", visdir)
-        stereo.shows(stereo.align([imgl, imgr]))
+        stereo.shows(stereo.rectify([imgl, imgr]))
         return stereo
 
     def get_T_cam2_in_self(cam1, cam2):
