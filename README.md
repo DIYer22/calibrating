@@ -16,7 +16,7 @@ pip install calibrating
 ```
 ## ▮ Run Example
 Example images are captured by paired_stereo_and_depth_cams:   
-<img src="https://github.com/yl-data/calibrating_example_data/raw/master/paired_stereo_and_depth_cams.jpg?raw=true" alt="" style="max-height:250px;">
+[![paired_stereo_and_depth_cams_1](https://user-images.githubusercontent.com/10448025/131831496-7a38c677-a578-4a4e-a01e-aa102dad9dbc.jpg)](https://github.com/yl-data/calibrating_example_data/raw/master/paired_stereo_and_depth_cams.jpg?raw=true)
 
 ```bash
 pip install calibrating
