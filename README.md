@@ -8,7 +8,7 @@ Calibrate the internal and external parameters of cameras, rectify stereo camera
 - High-level API that simplifies calibration steps
 - Decoupling the feature extraction and calibration process, support both checkboard and markers(`cv2.aruco`)
 - Automatically ignore non-compliant images
-- Rich visualization. e.g. [stereo-recitfy-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
+- Rich visualization. e.g. [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
 
 ## ▮ Install
 ```bash
@@ -29,7 +29,7 @@ git clone https://github.com/DIYer22/calibrating
 # Run checkboard example 
 python calibrating/example/checkboard_example.py
 ```
-Finally, your browser will open [stereo-recitfy-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
+Finally, your browser will auto open [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
 
 
 Detailed example code with comments: [example/checkboard_example.py](example/checkboard_example.py)   
