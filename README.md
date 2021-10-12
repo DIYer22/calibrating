@@ -1,7 +1,7 @@
 # `calibrating`: A Python Library for Camera Calibration
 Calibrate the internal and external parameters of cameras, rectify stereo cameras by OpenCV python.
 
-![stereo-checkboard](https://user-images.githubusercontent.com/10448025/131808105-a325961e-5fbb-4475-adcd-ba0e2c53e268.png)
+[![stereo-checkboard](https://user-images.githubusercontent.com/10448025/131808105-a325961e-5fbb-4475-adcd-ba0e2c53e268.png)](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html)
 <!-- ![stereo](https://user-images.githubusercontent.com/10448025/131805868-e73cd022-d79b-400c-b057-c26915f92c7c.jpg) -->
 
 ## ▮ Features

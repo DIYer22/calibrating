@@ -1,10 +1,7 @@
 # TODO list
-- [ ] English doc
-- [ ] Examples and better example 
 - [ ] depth_to_disparity, disparity_to_depth
 - [ ] Stereo different intrinsic cams
 - [ ] support Occlusion for external parameters
-- [ ] init from known K, D
 - [ ] Deal defect depth2
     - 主要是旁边的 depth 通过深度缺失口映射为了新的错误 depthl
     - 方案1: 在 depthl 上, 射线上的点若远于对应的 depth, 也 mask 掉
@@ -12,6 +9,9 @@
     - 方案3: 预测的地方在 camd 坐标下是深度缺失, 则抛弃
 
 ## Done
+- [x] init from known K, D
+- [x] English doc
+- [x] Examples and better example 
 - 全部以 m 为单位
 - [x] 以 key: imgp or imgps 为项
 - [x] 支持棋盘格, aruco

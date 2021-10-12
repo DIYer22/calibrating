@@ -90,5 +90,20 @@ def mean_Ts(Ts):
     return T
 
 
+def intrinsic_format_conversion(K_or_dic):
+    if isinstance(K_or_dic, dict):
+        dic = K_or_dic
+        return np.array(
+            [[dic["fx"], 0, dic["cx"]], [0, dic["fy"], dic["cy"]], [0, 0, 1]]
+        )
+    else:
+        dic, K = {}, K_or_dic.tolist()
+        dic["fx"] = K[0][0]
+        dic["cx"] = K[0][2]
+        dic["fy"] = K[1][1]
+        dic["cy"] = K[1][2]
+        return dic
+
+
 if __name__ == "__main__":
     pass

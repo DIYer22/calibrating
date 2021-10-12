@@ -5,6 +5,7 @@ from boxx import imread
 
 import os
 import cv2
+import yaml
 import pickle
 import numpy as np
 from glob import glob
@@ -12,7 +13,7 @@ from tqdm import tqdm
 
 with boxx.inpkg():
     from .stereo import Stereo
-    from .utils import r_t_to_T
+    from .utils import r_t_to_T, intrinsic_format_conversion
     from . import utils
 
 
@@ -132,14 +133,16 @@ class ArucoFeatureLib(MetaFeatureLib):
 class Cam(dict):
     def __init__(
         self,
-        img_paths,
+        img_paths=None,
         feature_lib=None,
         save_feature_vis=True,
         name=None,
         enable_cache=False,
     ):
-        assert len(img_paths) and len(img_paths) == len(set(img_paths))
         super().__init__()
+        if img_paths is None:
+            return
+        assert len(img_paths) and len(img_paths) == len(set(img_paths))
         self.feature_lib = feature_lib
         if isinstance(img_paths, (list, tuple)):
             left_idx, right_idx = self.get_key_idx(img_paths)
@@ -290,16 +293,62 @@ class Cam(dict):
         return sorted(cam1.valid_keys().intersection(cam2.valid_keys()))
 
     def __str__(self,):
-        s = "cam-%s: \n\tvalid=%s/%s \n\tretval=%.2f \n\timage_path=%s\n" % (
-            self.name,
-            len(self.image_points),
-            len(self),
-            self.retval,
-            next(iter(self.values()))["path"],
+        s = (
+            "Cam: \n\tname: '%s' \n\txy: %s\n\tvalid=%s/%s \n\tretval=%.2f \n\timage_path=%s\n"
+            % (
+                self.name,
+                self.xy,
+                len(self.__dict__.get("image_points", [])),
+                len(self),
+                self.__dict__.get("retval", -1),
+                len(self) and next(iter(self.values()))["path"],
+            )
         )
         return s
 
     __repr__ = __str__
+
+    def dump(self, path="", return_dict=False):
+
+        dic = {
+            k: v.tolist() if isinstance(v, np.ndarray) else v
+            for k, v in self.__dict__.items()
+            if k in ["D", "xy", "name", "T_in_main_cam"]
+        }
+        dic.update(intrinsic_format_conversion(self.K))
+        if return_dict:
+            return dic
+        yamlstr = yaml.safe_dump(dic)
+        if path:
+            with open(path, "w") as f:
+                f.write(yamlstr)
+        return yamlstr
+
+    def load(self, path_or_str_or_dict=None):
+        if path_or_str_or_dict is None:
+            path_or_str_or_dict = self
+            self = Cam()
+        if not isinstance(path_or_str_or_dict, (list, dict)):
+            path_or_str = path_or_str_or_dict
+            if "\n" in path_or_str:
+                dic = yaml.safe_load(path_or_str)
+            else:
+                with open(path_or_str) as f:
+                    dic = yaml.safe_load(f)
+        else:
+            dic = path_or_str_or_dict
+        dic["K"] = intrinsic_format_conversion(dic)
+        self.__dict__.update(dic)
+        return self
+
+    @classmethod
+    def init_by_K_D(cls, K, D, xy, name=None):
+        self = cls()
+        self.name = name or ("cam" + str(boxx.increase("caibrating.cam-name")))
+        self.K = K
+        self.D = D
+        self.xy = xy
+        return self
 
     @staticmethod
     def get_key_idx(paths):
@@ -312,6 +361,47 @@ class Cam(dict):
         while all([paths[0][right_idx] == path[right_idx] for path in paths]):
             right_idx -= 1
         return left_idx, right_idx + 1
+
+
+class Cams(list):
+    """
+    Unified multi-camera format, including a main cam. And each cam has attr "T_in_main_cam"
+    """
+    def __init__(self, main_cam=None, *cams):
+        super().__init__()
+        if main_cam is None:
+            return
+        self.init_by_cams(main_cam, *cams)
+
+    def init_by_cams(self, main_cam, *cams):
+        self.append(main_cam)
+        self.extend(cams)
+        for cam in self:
+            cam.T_in_main_cam = main_cam.get_T_cam2_in_self(cam)
+
+    def dump(self, path=""):
+        dic = [cam.dump(return_dict=True) for cam in self]
+        yamlstr = yaml.safe_dump(dic)
+        if path:
+            with open(path, "w") as f:
+                f.write(yamlstr)
+        return yamlstr
+
+    def load(self, path_or_str_or_list=None):
+        if path_or_str_or_list is None:
+            path_or_str_or_list = self
+            self = Cams()
+        if not isinstance(path_or_str_or_list, (list, dict)):
+            path_or_str = path_or_str_or_list
+            if "\n" in path_or_str:
+                l = yaml.safe_load(path_or_str)
+            else:
+                with open(path_or_str) as f:
+                    l = yaml.safe_load(f)
+        else:
+            l = path_or_str_or_list
+        self.extend([Cam.load(dic) for dic in l])
+        return self
 
 
 if __name__ == "__main__":
@@ -342,6 +432,7 @@ if __name__ == "__main__":
         name="depth",
         enable_cache=True,
     )
+    print(Cam.load(camd.dump()))
 
     stereo = Cam.stereo_with(caml, camr)
 
