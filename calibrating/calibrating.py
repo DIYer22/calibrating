@@ -367,6 +367,7 @@ class Cams(list):
     """
     Unified multi-camera format, including a main cam. And each cam has attr "T_in_main_cam"
     """
+
     def __init__(self, main_cam=None, *cams):
         super().__init__()
         if main_cam is None:
