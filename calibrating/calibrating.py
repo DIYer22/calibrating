@@ -182,14 +182,15 @@ class Cam(dict):
             d["T"] = r_t_to_T(rvecs[idx], tvecs[idx])
             feature_lib.set_Ts(d, self)
 
+        self._cache(do_cache=True)
         if save_feature_vis:
             visdir = TEMP + "/calibrating-vis-" + self.name
+            print("\nSave visualization of feature points in dir:", visdir)
             os.makedirs(visdir, exist_ok=True)
-            for key, d in tqdm(self.items()):
+            for key in tqdm(valid_keys):
+                d = self[key]
                 vis = feature_lib.vis(d, self)
                 boxx.imsave(visdir + "/" + key + ".jpg", vis)
-            print("Save visualization of feature points in dir:", visdir)
-        self._cache(do_cache=True)
 
     def _cache(self, do_cache=False):
         cache_path = TEMP + "/calibrating-cache-" + self.name + ".pkl"
