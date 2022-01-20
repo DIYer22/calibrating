@@ -244,8 +244,8 @@ class Cam(dict):
         for key in keys:
             Ts.extend(
                 [
-                    Tl @ np.linalg.inv(Td)
-                    for Tl, Td in zip(cam1[key]["Ts"], cam2[key]["Ts"])
+                    T1 @ np.linalg.inv(T2)
+                    for T1, T2 in zip(cam1[key]["Ts"], cam2[key]["Ts"])
                 ]
             )
 
