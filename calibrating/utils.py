@@ -8,12 +8,13 @@ import numpy as np
 def R_t_to_T(R, t):
     T = np.zeros((4, 4))
     T[:3, :3] = R
-    T[:3, -1] = t
+    T[:3, -1] = t.squeeze()
     T[3, 3] = 1
     return T
 
 
 def r_t_to_T(r, t):
+    assert r.size == 3
     return R_t_to_T(cv2.Rodrigues(r.squeeze())[0], t.squeeze())
 
 
