@@ -210,32 +210,20 @@ class Cam(dict):
         return False
 
     def stereo_with(caml, camr):
-        K1, D1, K2, D2 = (
-            caml.K,
-            caml.D,
-            camr.K,
-            camr.D,
-        )
-        xy = caml.xy
-
-        keys = caml.valid_keys_intersection(camr)
-        l1 = [caml[key]["image_points"] for key in keys]
-        l2 = [camr[key]["image_points"] for key in keys]
-        object_points = [caml.object_points] * len(keys)
-        return Stereo.init_by_calibrate(K1, D1, K2, D2, xy, object_points, l1, l2)
+        return Stereo(caml, camr)
 
     def vis_stereo(caml, camr, stereo=None, visn=4):
         if stereo is None:
-            stereo = caml.stereo_with(camr)
+            stereo = Stereo(caml, camr)
         visdir = TEMP + "/calibrating-stereo-vis/"
         os.makedirs(visdir, exist_ok=True)
         for key in caml.valid_keys_intersection(camr)[:visn]:
             imgl = boxx.imread(caml[key]["path"])
             imgr = boxx.imread(camr[key]["path"])
-            vis_rectify = stereo.vis(stereo.rectify([imgl, imgr]))
+            vis_rectify = stereo.vis(*stereo.rectify(imgl, imgr))
             boxx.imsave(visdir + key + ".jpg", vis_rectify)
         print("Save stereo vis to:", visdir)
-        stereo.shows(stereo.rectify([imgl, imgr]))
+        stereo.shows(*stereo.rectify(imgl, imgr))
         return stereo
 
     def get_T_cam2_in_self(cam1, cam2):
@@ -275,11 +263,11 @@ class Cam(dict):
         n_line = 21
         y, x = img.shape[:2]
         # TODO better vis code
-        visv = Stereo.vis([img, depth_vis], n_line=n_line)
-        vis = np.concatenate((visv, Stereo.vis([depth_vis, img], n_line=n_line),), 0)
+        visv = Stereo.vis(img, depth_vis, n_line=n_line)
+        vis = np.concatenate((visv, Stereo.vis(depth_vis, img, n_line=n_line),), 0)
         vis = np.rot90(
             Stereo.vis(
-                [np.rot90(vis[:y]), np.rot90(vis[y:])], n_line=int(n_line * x * 2 / y)
+                np.rot90(vis[:y]), np.rot90(vis[y:]), n_line=int(n_line * x * 2 / y)
             ),
             3,
         )
@@ -339,8 +327,14 @@ class Cam(dict):
         else:
             dic = path_or_str_or_dict
         dic["K"] = intrinsic_format_conversion(dic)
+        dic["D"] = np.array(dic["D"])
         self.__dict__.update(dic)
         return self
+
+    def copy(self):
+        new = type(self)()
+        new.load(self.dump())
+        return new
 
     @classmethod
     def init_by_K_D(cls, K, D, xy, name=None):
@@ -362,6 +356,35 @@ class Cam(dict):
         while all([paths[0][right_idx] == path[right_idx] for path in paths]):
             right_idx -= 1
         return left_idx, right_idx + 1
+
+    @staticmethod
+    def get_test_cams():
+        root = os.path.abspath(
+            os.path.join(
+                __file__,
+                "../../../calibrating_example_data/paired_stereo_and_depth_cams_checkboard",
+            )
+        )
+        feature_lib = CheckboardFeatureLib(checkboard=(7, 10), size_mm=22.564)
+        caml = Cam(
+            glob(os.path.join(root, "*", "stereo_l.jpg")),
+            feature_lib,
+            name="left",
+            enable_cache=True,
+        )
+        camr = Cam(
+            glob(os.path.join(root, "*", "stereo_r.jpg")),
+            feature_lib,
+            name="right",
+            enable_cache=True,
+        )
+        camd = Cam(
+            glob(os.path.join(root, "*", "depth_cam_color.jpg")),
+            feature_lib,
+            name="depth",
+            enable_cache=True,
+        )
+        return caml, camr, camd
 
 
 class Cams(list):
@@ -409,34 +432,10 @@ class Cams(list):
 if __name__ == "__main__":
     from boxx import *
 
-    root = os.path.abspath(
-        os.path.join(
-            __file__,
-            "../../../calibrating_example_data/paired_stereo_and_depth_cams_checkboard",
-        )
-    )
-    feature_lib = CheckboardFeatureLib(checkboard=(7, 10), size_mm=22.564)
-    caml = Cam(
-        glob(os.path.join(root, "*", "stereo_l.jpg")),
-        feature_lib,
-        name="left",
-        enable_cache=True,
-    )
-    camr = Cam(
-        glob(os.path.join(root, "*", "stereo_r.jpg")),
-        feature_lib,
-        name="right",
-        enable_cache=True,
-    )
-    camd = Cam(
-        glob(os.path.join(root, "*", "depth_cam_color.jpg")),
-        feature_lib,
-        name="depth",
-        enable_cache=True,
-    )
+    caml, camr, camd = Cam.get_test_cams()
     print(Cam.load(camd.dump()))
 
-    stereo = Cam.stereo_with(caml, camr)
+    stereo = Stereo(caml, camr)
 
     T_camd_in_caml = caml.get_T_cam2_in_self(camd)
     key = caml.valid_keys_intersection(camd)[0]
