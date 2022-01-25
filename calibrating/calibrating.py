@@ -445,5 +445,7 @@ if __name__ == "__main__":
     depthd = np.float32(depthd / 1000)
 
     depthl = caml.project_cam2_depth(camd, depthd, T_camd_in_caml)
+    # depthd_cycle = camd.project_cam2_depth(caml, depthl, camd.get_T_cam2_in_self(caml))
+    # shows(depthd, depthd_cycle)
 
     caml.vis_project_align(imgl, depthl, undistort=False)

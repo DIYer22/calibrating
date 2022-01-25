@@ -61,6 +61,7 @@ def point_cloud_to_depth(points, K, xy):
     xyzs[:, :2] /= xyzs[:, 2:]
 
     xyzs = np.array(sorted(xyzs, key=lambda xyz: -xyz[2]))
+    xyzs[:, :2] = xyzs[:, :2].round(0)
     mask = (
         (xyzs[:, 0] >= 0)
         & (xyzs[:, 0] < xy[0])
@@ -70,7 +71,7 @@ def point_cloud_to_depth(points, K, xy):
     xyzs = xyzs[mask, :]
 
     depth = np.zeros(xy[::-1])
-    depth[np.int32(xyzs[:, 1].round(0)), np.int32(xyzs[:, 0].round(0))] = xyzs[:, 2]
+    depth[np.int32(xyzs[:, 1]), np.int32(xyzs[:, 0])] = xyzs[:, 2]
     return depth
 
 

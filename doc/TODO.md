@@ -22,6 +22,9 @@
 - 我求的外参和 stereoCalibrate 求的外参有毫米级别的不一致
 - 很难兼容原来的接口了?
 - 有两组内外参该怎么办?
+- BUG
+    - [ ] 无法直接跑通
+    - [ ] dump load 挂了
 
 ## TODO list
 - [ ] depth_to_disparity, disparity_to_depth
