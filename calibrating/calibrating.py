@@ -328,6 +328,7 @@ class Cam(dict):
             dic = path_or_str_or_dict
         dic["K"] = intrinsic_format_conversion(dic)
         dic["D"] = np.array(dic["D"])
+        dic["xy"] = tuple(dic["xy"])
         self.__dict__.update(dic)
         return self
 
