@@ -181,11 +181,31 @@ class Stereo:
         """
         raise NotImplementedError()
 
-    def disparity_to_depth(self, disparity):
-        raise NotImplementedError()
+    def disparity_to_depth(self, disparity, depth_clip = [200, 5000]):
+        T = abs(self.t)
+        baseline = np.math.sqrt(T[0] ** 2 + T[1] ** 2 + T[2] ** 2)
+        fx = self.cam1.K[0, 0]
+         # 1.0-m, 1000.0-mm 
+        baseline_unit = 1000.0
+        depth = baseline_unit * baseline * fx / disparity
+        if depth_clip:
+            depth = np.clip(depth, depth_clip[0], depth_clip[1])
+        depth = depth.astype(np.uint16)
+        return depth
 
     def unrectify_depth(self, depth):
-        raise NotImplementedError()
+        maps = cv2.initUndistortRectifyMap(
+            self.cam1.K,
+            # self.cam1.D,
+            None,
+            np.linalg.inv(self.R1),
+            self.cam1.K,
+            self.cam1.xy,
+            cv2.CV_32FC1,
+        )
+
+        ir = cv2.remap(depth, maps[0], maps[1], cv2.INTER_NEAREST)
+        return ir
 
     def undistort_img(self, img1):
         return cv2.undistort(img1, self.cam1.K, self.cam1.D)
@@ -229,7 +249,8 @@ if __name__ == "__main__":
 
     yaml_path = "/tmp/stereo.yaml"
     stereo.dump(yaml_path)
-    stereo = Stereo.load(yaml_path)
+    # stereo = Stereo.load(yaml_path)
+    stereo = Stereo.load('./calibrating/stereo.yaml')
 
     cam1.vis_stereo(cam2, stereo)
 
