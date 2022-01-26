@@ -176,12 +176,17 @@ class Stereo:
 
     # TODO
     def depth_to_disparity(self, depth):
-        """
-        Used for genrate GT of disparity
-        """
-        raise NotImplementedError()
+        T = abs(self.t)
+        baseline = np.math.sqrt(T[0] ** 2 + T[1] ** 2 + T[2] ** 2)
+        fx = self.cam1.K[0, 0]
+         # 1.0-m, 1000.0-mm 
+        baseline_unit = 1000.0
+        disparity = baseline_unit * baseline * fx / depth
+        # TODO
+        # type convert!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        return disparity
 
-    def disparity_to_depth(self, disparity, depth_clip = [200, 5000]):
+    def disparity_to_depth(self, disparity, depth_clip = [200, 4500]):
         T = abs(self.t)
         baseline = np.math.sqrt(T[0] ** 2 + T[1] ** 2 + T[2] ** 2)
         fx = self.cam1.K[0, 0]
@@ -211,21 +216,48 @@ class Stereo:
         return cv2.undistort(img1, self.cam1.K, self.cam1.D)
 
     def distort_depth(self, depth):
-        raise NotImplementedError()
+        # OOM warning and very slow
+        w, h = self.cam1.xy
+        res = np.zeros((h, w), dtype = np.uint16)
+
+        ws = np.linspace(0, w, w, endpoint = False, dtype = np.int32)
+        hs = np.linspace(0, h, h, endpoint = False, dtype = np.int32)
+        u, v = np.meshgrid(ws, hs)
+        u, v = u.reshape((-1, 1)), v.reshape((-1, 1))
+        
+        points = np.concatenate([u, v], axis = -1).astype(np.float32)
+        depths = np.reshape(depth, (-1,))
+
+        rtemp = ttemp = np.array([0, 0, 0], dtype = np.float32)
+            
+        undistort_points = cv2.undistortPoints(points, self.cam1.K, None)
+        homogeneous_undistort_points = cv2.convertPointsToHomogeneous(undistort_points)
+        imagePoints, _ = cv2.projectPoints(homogeneous_undistort_points, rtemp, ttemp, self.cam1.K, self.cam1.D, undistort_points)
+        imagePoints = np.reshape(imagePoints, (-1, 2)).astype(np.int32)
+        points, index = np.unique(imagePoints, axis = 0, return_index = True)
+        
+        res[points[:, 1], points[:, 0]] = depths[index]
+        return res
 
     def set_stereo_matching(self, stereo_matching):
         self.stereo_matching = stereo_matching
 
-    def get_depth(self, img1, img2):
-        disparity = self.stereo_matching(img1, img2)
-        rectify_depth = self.disparity_to_depth(disparity)
+    def get_depth(self, img1, img2, depth_clip = [200, 4500]):
+        rectify_img1, rectify_img2 = self.rectify(img1, img2)
+        disparity = self.stereo_matching(rectify_img1, rectify_img2)
+        # disparity = self.stereo_matching(img1, img2)
+        
+        rectify_depth = self.disparity_to_depth(disparity, depth_clip)
         unrectify_depth = self.unrectify_depth(rectify_depth)
         undistort_img1 = self.undistort_img(img1)
+        distort_depth = self.distort_depth(unrectify_depth)
         return dict(
             disparity=disparity,
             rectify_depth=rectify_depth,
             unrectify_depth=unrectify_depth,
             undistort_img1=undistort_img1,
+            distort_depth=distort_depth,
+            distort_img1=img1,
         )
 
 
@@ -242,25 +274,83 @@ class MetaStereoMatching:
 if __name__ == "__main__":
     from calibrating import *
     from calibrating import Cam
+    
+    import sys
+    sys.path.append("..")
+    from crestereo import CRE_Stereo
 
-    cam1, cam2, camd = Cam.get_test_cams()
+    # cam1, cam2, camd = Cam.get_test_cams()
 
-    stereo = Stereo(cam1, cam2)
+    # stereo = Stereo(cam1, cam2)
 
-    yaml_path = "/tmp/stereo.yaml"
-    stereo.dump(yaml_path)
-    # stereo = Stereo.load(yaml_path)
+    # yaml_path = "/tmp/stereo.yaml"
+    # stereo.dump(yaml_path)
+    # # stereo = Stereo.load(yaml_path)
+    # stereo = Stereo.load('./calibrating/stereo.yaml')
+
+    # cam1.vis_stereo(cam2, stereo)
+
+    # # stereo_matching = MetaStereoMatching({})
+    # stereo_matching = CRE_Stereo()
+    # stereo.set_stereo_matching(stereo_matching)
+
+    # key = list(cam1)[0]
+    # img1 = boxx.imread(cam1[key]["path"])
+    # img2 = boxx.imread(cam2[key]["path"])
+
+    # re = stereo.get_depth(img1, img2)
+    # boxx.tree(re)
+    # boxx.shows(re)
+
+
+    stereo = Stereo()
     stereo = Stereo.load('./calibrating/stereo.yaml')
 
-    cam1.vis_stereo(cam2, stereo)
-
-    stereo_matching = MetaStereoMatching({})
+    # stereo_matching = MetaStereoMatching({})
+    stereo_matching = CRE_Stereo()
     stereo.set_stereo_matching(stereo_matching)
 
-    key = list(cam1)[0]
-    img1 = boxx.imread(cam1[key]["path"])
-    img2 = boxx.imread(cam2[key]["path"])
+    img1 = '../calibrating_example_data/paired_stereo_and_depth_cams_checkboard/1/stereo_l.jpg'
+    img2 = '../calibrating_example_data/paired_stereo_and_depth_cams_checkboard/1/stereo_r.jpg'
+    
+    img1 = boxx.imread(img1)
+    img2 = boxx.imread(img2)
 
     re = stereo.get_depth(img1, img2)
-    boxx.tree(re)
-    boxx.shows(re)
+
+    unrectify_depth = re['unrectify_depth']
+    undistort_img1 = re['undistort_img1']
+
+    min_, max_ = [200, 4500]
+    depth_vis = boxx.uint8((unrectify_depth.clip(min_, max_) - min_) / (max_ - min_))
+    depth_vis_color = cv2.applyColorMap(depth_vis, cv2.COLORMAP_JET)[..., ::-1]
+
+    show1 = np.concatenate([undistort_img1, depth_vis_color], axis = 1)
+    show2 = np.concatenate([depth_vis_color, np.zeros_like(depth_vis_color)], axis = 1)
+    show = np.concatenate([show1, show2], axis = 0)
+    h, w, _ = show.shape
+    for i in range(0, h//2, 200):
+        cv2.line(show, (0, i), (w - 1, i), (0, 0, 255), 5, 0)
+    for i in range(0, w//2, 200):
+        cv2.line(show, (i, 0), (i, h - 1), (255, 0, 0), 5, 0)    
+
+    boxx.imsave('/data/Stereo/tmp/undistort_unrectify.png', cv2.resize(show, None, fx = 0.25, fy = 0.25))
+
+
+    distort_depth = re['distort_depth']
+    distort_img1 = re['distort_img1']
+
+    min_, max_ = [200, 4500]
+    depth_vis = boxx.uint8((distort_depth.clip(min_, max_) - min_) / (max_ - min_))
+    depth_vis_color = cv2.applyColorMap(depth_vis, cv2.COLORMAP_JET)[..., ::-1]
+
+    show1 = np.concatenate([distort_img1, depth_vis_color], axis = 1)
+    show2 = np.concatenate([depth_vis_color, np.zeros_like(depth_vis_color)], axis = 1)
+    show = np.concatenate([show1, show2], axis = 0)
+    h, w, _ = show.shape
+    for i in range(0, h//2, 200):
+        cv2.line(show, (0, i), (w - 1, i), (0, 0, 255), 5, 0)
+    for i in range(0, w//2, 200):
+        cv2.line(show, (i, 0), (i, h - 1), (255, 0, 0), 5, 0)    
+
+    boxx.imsave('/data/Stereo/tmp/distort_unrectify.png', cv2.resize(show, None, fx = 0.25, fy = 0.25))
