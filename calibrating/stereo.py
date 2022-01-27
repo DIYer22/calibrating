@@ -209,7 +209,7 @@ class Stereo:
         OOM warning and very slow
         """
         w, h = self.cam1.xy
-        res = np.zeros((h, w), dtype=np.uint16)
+        res = np.zeros((h, w), dtype=depth.dtype)
 
         ws = np.linspace(0, w, w, endpoint=False, dtype=np.int32)
         hs = np.linspace(0, h, h, endpoint=False, dtype=np.int32)
