@@ -37,4 +37,26 @@ Finally, your browser will open [stereo-rectify-vis](https://yl-data.github.io/2
 Detailed example code with comments: [example/checkboard_example.py](example/checkboard_example.py)   
 Or Chinese Version: [example/checkboard_example_cn.py (中文注释)](example/checkboard_example_cn.py)
 
+## ▮ Stereo
+
+Run stereo [example](calibrating/stereo.py):
+```bash
+python calibrating/calibrating/stereo.py
+```
+
+**Flowchart of `calbrating.Stereo.get_depth(img1, img2)`**
+```mermaid
+flowchart 
+    subgraph Stereo
+        input(input: img1, img2)--> undistort
+        undistort-->rectify
+        undistort --> stereo_re
+        subgraph StereoMatching
+        end
+        rectify --> StereoMatching
+        StereoMatching --> disparity_to_depth
+        disparity_to_depth --> unrectify
+        unrectify --> stereo_re("output\nundistort_img1\nunrectify_depth")
+    end
+```
 

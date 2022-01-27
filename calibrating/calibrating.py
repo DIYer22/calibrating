@@ -260,20 +260,7 @@ class Cam(dict):
             img = cv2.undistort(img, self.K, self.D)
         depth_uint8 = np.uint8(depth / depth.max() * 255)
         depth_vis = np.uint8(cv2.applyColorMap(depth_uint8, cv2.COLORMAP_JET) * 0.75)
-        n_line = 21
-        y, x = img.shape[:2]
-        # TODO better vis code
-        visv = Stereo.vis(img, depth_vis, n_line=n_line)
-        vis = np.concatenate((visv, Stereo.vis(depth_vis, img, n_line=n_line),), 0)
-        vis = np.rot90(
-            Stereo.vis(
-                np.rot90(vis[:y]), np.rot90(vis[y:]), n_line=int(n_line * x * 2 / y)
-            ),
-            3,
-        )
-        viss = [vis[:y, :x], vis[:y, x:], vis[y:, :x], vis[y:, x:]]
-        boxx.shows(viss)
-        return viss
+        return utils.vis_align(img, depth_vis)
 
     def valid_keys(self):
         return set([key for key in self if "image_points" in self[key]])

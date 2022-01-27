@@ -4,6 +4,9 @@ import yaml
 import boxx
 import numpy as np
 
+with boxx.inpkg():
+    from . import utils
+
 
 class Stereo:
     """
@@ -142,28 +145,7 @@ class Stereo:
             return cv2.imread(path_or_np)[..., ::-1]
         return path_or_np
 
-    @staticmethod
-    def vis(img1, img2, n_line=21, thickness=0.03):
-        """
-        Draw lines on stereo image pairs, two cases of horizontal rectify and vertical rectify.
-        Input: image numpy pairs.
-        """
-        colors = [
-            [255, 0, 0],
-            [0, 255, 255],
-            [0, 255, 0],
-            [255, 0, 255],
-            [0, 0, 255],
-            [255, 255, 0],
-        ]
-        vis = np.concatenate([img1, img2], 1)
-        img_size = img1.shape[0]
-        _thickness = max(1, int(round(thickness * img_size / (n_line + 1))))
-        gap = img_size / (n_line + 1)
-        for i in range(n_line):
-            b = int((i + 1) * gap - _thickness / 2)
-            vis[b : b + _thickness] = colors[i % len(colors)]
-        return vis
+    vis = staticmethod(utils.vis_stereo)
 
     @classmethod
     def shows(cls, *l, **kv):
@@ -241,22 +223,30 @@ class Stereo:
         self.stereo_matching = stereo_matching
 
     def get_depth(self, img1, img2, return_distort_depth=False):
+        """
+        Return:
+            undistort_img1
+            unrectify_depth
+        The unit of depth is m
+        """
         rectify_img1, rectify_img2 = self.rectify(img1, img2)
         disparity = self.stereo_matching(rectify_img1, rectify_img2)
 
         rectify_depth = self.disparity_to_depth(disparity)
         unrectify_depth = self.unrectify_depth(rectify_depth)
         undistort_img1 = self.undistort_img(img1)
-        if return_distort_depth:
-            distort_depth = self.distort_depth(unrectify_depth)
-        return dict(
-            disparity=disparity,
-            rectify_depth=rectify_depth,
-            unrectify_depth=unrectify_depth,
+
+        result = dict(
             undistort_img1=undistort_img1,
-            distort_depth=distort_depth if return_distort_depth else None,
-            distort_img1=img1 if return_distort_depth else None,
+            unrectify_depth=unrectify_depth,
+            rectify_depth=rectify_depth,
+            disparity=disparity,
         )
+        if return_distort_depth:
+            result.update(
+                distort_img1=img1, distort_depth=self.distort_depth(unrectify_depth),
+            )
+        return result
 
 
 class MetaStereoMatching:
@@ -292,4 +282,4 @@ if __name__ == "__main__":
 
     re = stereo.get_depth(img1, img2)
     boxx.tree(re)
-    boxx.shows(re)
+    utils.vis_align(re["undistort_img1"], re["unrectify_depth"])

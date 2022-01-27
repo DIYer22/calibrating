@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import boxx
 import cv2
+import boxx
 import numpy as np
 
 
@@ -105,6 +105,58 @@ def intrinsic_format_conversion(K_or_dic):
         dic["fy"] = K[1][1]
         dic["cy"] = K[1][2]
         return dic
+
+
+def _to_3x_uint8(arr):
+    if arr.dtype != np.uint8:
+        arr = boxx.uint8(boxx.norma(arr))
+        arr = np.uint8(cv2.applyColorMap(arr, cv2.COLORMAP_JET) * 0.75)
+    elif arr.ndim == 2:
+        arr = np.transpose([arr] * 3, (1, 2, 0))
+    return arr
+
+
+def vis_stereo(img1, img2, n_line=21, thickness=0.03):
+    """
+    Draw lines on stereo image pairs, two cases of horizontal rectify and vertical rectify.
+    Input: image numpy pairs.
+    """
+    img1 = _to_3x_uint8(img1)
+    img2 = _to_3x_uint8(img2)
+    colors = [
+        [255, 0, 0],
+        [0, 255, 255],
+        [0, 255, 0],
+        [255, 0, 255],
+        [0, 0, 255],
+        [255, 255, 0],
+    ]
+    vis = np.concatenate([img1, img2], 1)
+    img_size = img1.shape[0]
+    _thickness = max(1, int(round(thickness * img_size / (n_line + 1))))
+    gap = img_size / (n_line + 1)
+    for i in range(n_line):
+        b = int((i + 1) * gap - _thickness / 2)
+        vis[b : b + _thickness] = colors[i % len(colors)]
+    return vis
+
+
+def vis_align(img1, img2, n_line=21, shows=True):
+    img1 = _to_3x_uint8(img1)
+    img2 = _to_3x_uint8(img2)
+    y, x = img1.shape[:2]
+    visv = vis_stereo(img1, img2, n_line=n_line)
+    vis = np.concatenate((visv, vis_stereo(img2, img1, n_line=n_line),), 0)
+    vis = np.rot90(
+        vis_stereo(
+            np.rot90(vis[:y]), np.rot90(vis[y:]), n_line=int(n_line * x * 2 / y)
+        ),
+        3,
+    )
+    viss = [vis[:y, :x], vis[:y, x:], vis[y:, :x], vis[y:, x:]]
+    if shows:
+        boxx.shows(viss)
+    return viss
 
 
 if __name__ == "__main__":
