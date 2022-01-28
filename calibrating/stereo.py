@@ -29,6 +29,8 @@ class Stereo:
         └── D: (1, 5)float64
     """
 
+    MAX_DEPTH = 10
+
     def __init__(self, cam1=None, cam2=None, force_same_intrinsic=True):
         if cam1 is None:
             return
@@ -168,6 +170,7 @@ class Stereo:
         baseline = np.math.sqrt(T[0] ** 2 + T[1] ** 2 + T[2] ** 2)
         fx = self.cam1.K[0, 0]
         depth = 1.0 * baseline * fx / disparity
+        depth[depth > self.MAX_DEPTH] = 0
         return depth
 
     def unrectify_depth(self, depth):
@@ -255,12 +258,46 @@ class MetaStereoMatching:
 
     def __call__(self, img1, img2):
         # input: RGB uint8 (h, w, 3)uint8
-        # output: float disparity (h, w)float64
-        return img1.mean(-1)
+        raise NotImplementedError()
+        # output: float disparity (h, w)float64, unit is m
+        # return disparity
+
+
+# A Example of StereoMatching class
+class SemiGlobalBlockMatching(MetaStereoMatching):
+    def __init__(self, cfg):
+        default_cfg = {
+            "max_size": 1000,
+            # SGBM_args
+            "P1": 4590,
+            "P2": 18360,
+            "blockSize": 5,
+            "disp12MaxDiff": 1,
+            "minDisparity": 40,
+            "mode": 2,
+            "numDisparities": 80,
+            "preFilterCap": 63,
+            "speckleRange": 2,
+            "speckleWindowSize": 0,
+            "uniquenessRatio": 15,
+        }
+        default_cfg.update(cfg)
+        self.cfg = default_cfg
+        self.max_size = self.cfg.pop("max_size")
+        self.stereo_sgbm = cv2.StereoSGBM_create(**self.cfg)
+
+    def __call__(self, img1, img2):
+        resize_ratio = min(self.max_size / max(img1.shape[:2]), 1)
+        simg1, simg2 = boxx.resize(img1, resize_ratio), boxx.resize(img2, resize_ratio)
+        sdisparity = (self.stereo_sgbm.compute(simg1, simg2).astype(np.float32)).clip(
+            0
+        ) / 16.0
+        disparity = boxx.resize(sdisparity, 1 / resize_ratio) / resize_ratio
+        return disparity
 
 
 if __name__ == "__main__":
-    from calibrating import *
+    from boxx import *
     from calibrating import Cam
 
     cam1, cam2, camd = Cam.get_test_cams()
@@ -273,7 +310,7 @@ if __name__ == "__main__":
 
     cam1.vis_stereo(cam2, stereo)
 
-    stereo_matching = MetaStereoMatching({})
+    stereo_matching = SemiGlobalBlockMatching({})
     stereo.set_stereo_matching(stereo_matching)
 
     key = list(cam1)[0]

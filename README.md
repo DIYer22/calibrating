@@ -10,18 +10,19 @@ Calibrate the internal and external parameters of cameras, rectify stereo camera
 - Very easy to install and run example
 - Automatically ignore non-compliant images
 - Decoupling the feature extraction and calibration process, support both checkboard and markers(`cv2.aruco`)
-- Mature [stereo module](calibrating/stereo.py) as depth camera
+- Mature [stereo module](calibrating/stereo.py) for correctly calculate the depth
+- Provide camera internal and external parameters standard, which can be exported as `.yaml`
 
 ## ▮ Install
 ```bash
-pip install calibrating
+pip3 install calibrating
 ```
 ## ▮ Run Example
 Example images are captured by paired_stereo_and_depth_cams:   
 [![paired_stereo_and_depth_cams_1](https://user-images.githubusercontent.com/10448025/131831496-7a38c677-a578-4a4e-a01e-aa102dad9dbc.jpg)](https://github.com/yl-data/calibrating_example_data/raw/master/paired_stereo_and_depth_cams.jpg?raw=true)
 
 ```bash
-pip install calibrating
+pip3 install calibrating
 # Prepare example data(120MB): checkboard images of paired stereo and depth cameras
 git clone https://github.com/yl-data/calibrating_example_data
 
@@ -29,7 +30,7 @@ git clone https://github.com/yl-data/calibrating_example_data
 git clone https://github.com/DIYer22/calibrating
 
 # Run checkboard example 
-python calibrating/example/checkboard_example.py
+python3 calibrating/example/checkboard_example.py
 ```
 Finally, your browser will open [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
 
@@ -39,12 +40,15 @@ Or Chinese Version: [example/checkboard_example_cn.py (中文注释)](example/ch
 
 ## ▮ Stereo
 
-Run stereo [example](calibrating/stereo.py):
+Run [stereo example](calibrating/stereo.py):
 ```bash
-python calibrating/calibrating/stereo.py
+python3 calibrating/calibrating/stereo.py
 ```
+After a while, your browser will open:
+- [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html)
+- [StereoSGBM-depth-vis](https://yl-data.github.io/2108.calibrating-vis/stereo_sgbm_vis/): Which shows `undistort_img1`, `unrectify_depth`. The example disparity is compute by `cv2.StereoSGBM`.
 
-**Flowchart of `calbrating.Stereo.get_depth(img1, img2)`**
+**[Mermaid](https://mermaid.live/) flowchart of `calbrating.Stereo.get_depth(img1, img2)`**
 ```mermaid
 flowchart 
     subgraph Stereo
@@ -59,4 +63,5 @@ flowchart
         unrectify --> stereo_re("output\nundistort_img1\nunrectify_depth")
     end
 ```
+
 

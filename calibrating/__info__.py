@@ -1,4 +1,4 @@
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 __description__ = "Calibrate the internal and external parameters of cameras, rectify stereo cameras by OpenCV python."
 __license__ = "MIT"
 __author__ = "DIYer22"

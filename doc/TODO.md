@@ -14,17 +14,18 @@
 
 ## tmp
 期望
-- stereo 包含两个 cam
-- stereo 应该继承自 Cams?
-- stereo dump yaml
-- stereo 接口和 nn rectify, nn undisort 兼容
-- 能处理好畸变和 rectify 
-- 我求的外参和 stereoCalibrate 求的外参有毫米级别的不一致
-- 很难兼容原来的接口了?
-- 有两组内外参该怎么办?
-- BUG
-    - [ ] 无法直接跑通
-    - [ ] dump load 挂了
+- [x] stereo 包含两个 cam
+- [x] ~~stereo 应该继承自 Cams?~~
+- [x] stereo dump yaml
+- [x] ~~stereo 接口和 nn rectify, nn undisort 兼容~~
+    - 暂时不考虑
+- [x] 能处理好畸变和 rectify 
+- [x] 我求的外参和 stereoCalibrate 求的外参有毫米级别的不一致
+    - 以 stereoCalibrate 为准
+- [x] 很难兼容原来的接口了?
+    - 以前用途不广, 能接受破坏性升级
+- [x] 有两组内外参该怎么办?
+    - 以 stereoCalibrate 为准
 
 ## TODO list
 - [ ] Stereo different intrinsic cams
