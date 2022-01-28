@@ -46,7 +46,7 @@ python3 calibrating/calibrating/stereo.py
 ```
 After a while, your browser will open:
 - [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html)
-- [StereoSGBM-depth-vis](https://yl-data.github.io/2108.calibrating-vis/stereo_sgbm_vis/): Which shows `undistort_img1`, `unrectify_depth`. The example disparity is compute by `cv2.StereoSGBM`.
+- [StereoSGBM-depth-vis](https://yl-data.github.io/2108.calibrating-vis/stereo_sgbm_vis/): Which shows `undistort_img1`, `unrectify_depth`. The example disparity is computed by `cv2.StereoSGBM`.
 
 **[Mermaid](https://mermaid.live/) flowchart of `calbrating.Stereo.get_depth(img1, img2)`**
 ```mermaid
