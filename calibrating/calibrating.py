@@ -15,6 +15,7 @@ with boxx.inpkg():
     from .stereo import Stereo
     from .utils import r_t_to_T, intrinsic_format_conversion
     from . import utils
+    from .__info__ import __version__
 
 
 TEMP = __import__("tempfile").gettempdir()
@@ -216,8 +217,8 @@ class Cam(dict):
         if stereo is None:
             stereo = Stereo(caml, camr)
         visdir = TEMP + "/calibrating-stereo-vis/"
-        os.makedirs(visdir, exist_ok=True)
         print("Save stereo vis to:", visdir)
+        os.makedirs(visdir, exist_ok=True)
         for key in tqdm(caml.valid_keys_intersection(camr)[:visn]):
             imgl = boxx.imread(caml[key]["path"])
             imgr = boxx.imread(camr[key]["path"])
@@ -294,6 +295,7 @@ class Cam(dict):
         dic.update(intrinsic_format_conversion(self.K))
         if return_dict:
             return dic
+        dic["_calibrating_version"] = __version__
         yamlstr = yaml.safe_dump(dic)
         if path:
             with open(path, "w") as f:

@@ -6,6 +6,7 @@ import numpy as np
 
 with boxx.inpkg():
     from . import utils
+    from .__info__ import __version__
 
 
 class Stereo:
@@ -112,6 +113,7 @@ class Stereo:
         dic["cam2"] = self.cam2.dump(return_dict=True)
         if return_dict:
             return dic
+        dic["_calibrating_version"] = __version__
         yamlstr = yaml.safe_dump(dic)
         if path:
             with open(path, "w") as f:
