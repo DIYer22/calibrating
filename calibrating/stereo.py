@@ -65,7 +65,7 @@ class Stereo:
             self.cam1.K,
             self.cam1.D,
             self.cam2.K,
-            self.cam2.K,
+            self.cam2.D,
             self.cam1.xy,
             criteria=stereocalib_criteria,
             flags=flags,
