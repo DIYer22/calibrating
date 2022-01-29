@@ -217,12 +217,12 @@ class Cam(dict):
             stereo = Stereo(caml, camr)
         visdir = TEMP + "/calibrating-stereo-vis/"
         os.makedirs(visdir, exist_ok=True)
-        for key in caml.valid_keys_intersection(camr)[:visn]:
+        print("Save stereo vis to:", visdir)
+        for key in tqdm(caml.valid_keys_intersection(camr)[:visn]):
             imgl = boxx.imread(caml[key]["path"])
             imgr = boxx.imread(camr[key]["path"])
             vis_rectify = stereo.vis(*stereo.rectify(imgl, imgr))
             boxx.imsave(visdir + key + ".jpg", vis_rectify)
-        print("Save stereo vis to:", visdir)
         stereo.shows(*stereo.rectify(imgl, imgr))
         return stereo
 

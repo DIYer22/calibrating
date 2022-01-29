@@ -42,8 +42,8 @@ class Stereo:
 
     def get_R_t_by_stereo_calibrate(self):
         keys = self.cam1.valid_keys_intersection(self.cam2)
-        image_pointsl = [self.cam1[key]["image_points"] for key in keys]
-        image_pointsr = [self.cam2[key]["image_points"] for key in keys]
+        image_points1 = [self.cam1[key]["image_points"] for key in keys]
+        image_points2 = [self.cam2[key]["image_points"] for key in keys]
         object_points = [self.cam1.object_points] * len(keys)
         if self.force_same_intrinsic:
             self.cam2 = self.cam2.copy()
@@ -60,8 +60,8 @@ class Stereo:
         )
         ret, _, _, _, _, self.R, self.t, E, F = cv2.stereoCalibrate(
             object_points,
-            image_pointsl,
-            image_pointsr,
+            image_points1,
+            image_points2,
             self.cam1.K,
             self.cam1.D,
             self.cam2.K,
@@ -85,19 +85,19 @@ class Stereo:
         )
 
     def rectify(self, img1, img2):
-        ir1 = cv2.remap(
+        rectified1 = cv2.remap(
             self._get_img(img1),
             self.undistort_rectify_map1[0],
             self.undistort_rectify_map1[1],
             cv2.INTER_LANCZOS4,
         )
-        ir2 = cv2.remap(
+        rectified2 = cv2.remap(
             self._get_img(img2),
             self.undistort_rectify_map2[0],
             self.undistort_rectify_map2[1],
             cv2.INTER_LANCZOS4,
         )
-        return [ir1, ir2]
+        return [rectified1, rectified2]
 
     DUMP_ATTRS = ["R", "t"]
 
