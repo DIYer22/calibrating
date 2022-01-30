@@ -256,9 +256,8 @@ class Cam(dict):
         depth1 = utils.point_cloud_to_depth(point_cloud1, cam1.K, cam1.xy)
         return depth1
 
-    def vis_project_align(self, img, depth, undistort=False):
-        if not undistort:
-            img = cv2.undistort(img, self.K, self.D)
+    def vis_project_align(self, img, depth):
+        img = cv2.undistort(img, self.K, self.D)
         depth_uint8 = np.uint8(depth / depth.max() * 255)
         depth_vis = np.uint8(cv2.applyColorMap(depth_uint8, cv2.COLORMAP_JET) * 0.75)
         return utils.vis_align(img, depth_vis)
@@ -438,4 +437,4 @@ if __name__ == "__main__":
     # depthd_cycle = camd.project_cam2_depth(caml, depthl, camd.get_T_cam2_in_self(caml))
     # shows(depthd, depthd_cycle)
 
-    caml.vis_project_align(imgl, depthl, undistort=False)
+    caml.vis_project_align(imgl, depthl)
