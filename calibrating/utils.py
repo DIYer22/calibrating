@@ -116,6 +116,9 @@ def _to_3x_uint8(arr):
     return arr
 
 
+vis_depth = _to_3x_uint8
+
+
 def vis_stereo(img1, img2, n_line=21, thickness=0.03):
     """
     Draw lines on stereo image pairs, two cases of horizontal rectify and vertical rectify.
