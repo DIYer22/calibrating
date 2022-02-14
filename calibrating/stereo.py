@@ -30,8 +30,6 @@ class Stereo:
         └── D: (1, 5)float64
     """
 
-    MAX_DEPTH = 10
-
     def __init__(self, cam1=None, cam2=None, force_same_intrinsic=True):
         if cam1 is None:
             return
@@ -160,19 +158,24 @@ class Stereo:
         boxx.shows(viss)
         return viss
 
+    MAX_DEPTH = 10
+
+    def get_max_depth(self):
+        return getattr(self, "max_depth", self.MAX_DEPTH)
+
+    @property
+    def baseline(self):
+        return np.sum(self.t ** 2) ** 0.5
+
     def depth_to_disparity(self, depth):
-        T = abs(self.t)
-        baseline = np.math.sqrt(T[0] ** 2 + T[1] ** 2 + T[2] ** 2)
         fx = self.cam1.K[0, 0]
-        disparity = 1.0 * baseline * fx / depth
+        disparity = 1.0 * self.baseline * fx / depth
         return disparity
 
     def disparity_to_depth(self, disparity):
-        T = abs(self.t)
-        baseline = np.math.sqrt(T[0] ** 2 + T[1] ** 2 + T[2] ** 2)
         fx = self.cam1.K[0, 0]
-        depth = 1.0 * baseline * fx / disparity
-        depth[depth > self.MAX_DEPTH] = 0
+        depth = 1.0 * self.baseline * fx / disparity
+        depth[depth > self.get_max_depth()] = 0
         return depth
 
     def unrectify_depth(self, depth):
@@ -224,8 +227,24 @@ class Stereo:
         res[points[:, 1], points[:, 0]] = depths[index]
         return res
 
-    def set_stereo_matching(self, stereo_matching):
+    def set_stereo_matching(
+        self, stereo_matching, max_depth=None, translation_rectify_img=False
+    ):
+        """
+        Parameters
+        ----------
+        stereo_matching : MetaStereoMatching
+            Subinstance of calibrating.MetaStereoMatching
+        max_depth : float, optional
+            The default is Stereo.MAX_DEPTH.
+        translation_rectify_img : bool, the default is False.
+            When self.get_depth(), translation rectify_img2 by self.min_disparity, 
+            self.min_disparity is accroding to self.max_depth.
+        """
         self.stereo_matching = stereo_matching
+        self.translation_rectify_img = translation_rectify_img
+        self.max_depth = max_depth or self.MAX_DEPTH
+        self.min_disparity = int(self.cam1.K[0, 0] * self.baseline / self.max_depth)
 
     def get_depth(self, img1, img2, return_distort_depth=False):
         """
@@ -235,7 +254,15 @@ class Stereo:
         The unit of depth is m
         """
         rectify_img1, rectify_img2 = self.rectify(img1, img2)
+        if getattr(self, "translation_rectify_img"):
+            rectify_img2[:, self.min_disparity :] = rectify_img2[
+                :, : -self.min_disparity
+            ]
+            rectify_img2[:, : self.min_disparity] = 0
+        # shows-(rectify_img1, rectify_img2)
         disparity = self.stereo_matching(rectify_img1, rectify_img2)
+        if getattr(self, "translation_rectify_img"):
+            disparity += self.min_disparity
 
         rectify_depth = self.disparity_to_depth(disparity)
         unrectify_depth = self.unrectify_depth(rectify_depth)
@@ -275,7 +302,7 @@ class SemiGlobalBlockMatching(MetaStereoMatching):
             "P2": 18360,
             "blockSize": 5,
             "disp12MaxDiff": 1,
-            "minDisparity": 40,
+            "minDisparity": 2,
             "mode": 2,
             "numDisparities": 80,
             "preFilterCap": 63,
@@ -313,7 +340,9 @@ if __name__ == "__main__":
     cam1.vis_stereo(cam2, stereo)
 
     stereo_matching = SemiGlobalBlockMatching({})
-    stereo.set_stereo_matching(stereo_matching)
+    stereo.set_stereo_matching(
+        stereo_matching, max_depth=3.5, translation_rectify_img=True
+    )
 
     key = list(cam1)[0]
     img1 = boxx.imread(cam1[key]["path"])
