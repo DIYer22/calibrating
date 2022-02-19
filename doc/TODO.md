@@ -28,7 +28,6 @@
     - 以 stereoCalibrate 为准
 
 ## TODO list
-- [ ] Stereo different intrinsic cams
 - [ ] support Occlusion for external parameters
 - 和建冉沟通 calibrating 后
     - [ ] 目的: 抽象出来并共用 Cam 模型
@@ -41,6 +40,7 @@
     - [x] cam 支持预定义内参 K, D
     - [x] dumap and load yaml of KD
 ## Done
+- [x] Stereo different intrinsic cams
 - [x] depth_to_disparity, disparity_to_depth
 - [x] init from known K, D
 - [x] English doc

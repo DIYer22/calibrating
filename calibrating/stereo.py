@@ -30,7 +30,7 @@ class Stereo:
         └── D: (1, 5)float64
     """
 
-    def __init__(self, cam1=None, cam2=None, force_same_intrinsic=True):
+    def __init__(self, cam1=None, cam2=None, force_same_intrinsic=False):
         if cam1 is None:
             return
         self.cam1 = cam1
@@ -80,7 +80,7 @@ class Stereo:
             self.cam1.K, self.cam1.D, self.R1, self.cam1.K, xy, cv2.CV_32FC1
         )
         self.undistort_rectify_map2 = cv2.initUndistortRectifyMap(
-            self.cam2.K, self.cam2.D, self.R2, self.cam2.K, xy, cv2.CV_32FC1
+            self.cam2.K, self.cam2.D, self.R2, self.cam1.K, xy, cv2.CV_32FC1
         )
 
     def rectify(self, img1, img2):
