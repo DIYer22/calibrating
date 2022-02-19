@@ -51,7 +51,7 @@ After a while, your browser will open:
 **[Mermaid](https://mermaid.live/) flowchart of `calbrating.Stereo.get_depth(img1, img2)`**
 ```mermaid
 flowchart 
-    subgraph Stereo
+    subgraph "Stereo.get_depth(img1, img2)"
         input(input: img1, img2)--> undistort
         undistort-->rectify
         undistort --> stereo_re
@@ -60,7 +60,7 @@ flowchart
         rectify --> StereoMatching
         StereoMatching --> disparity_to_depth
         disparity_to_depth --> unrectify
-        unrectify --> stereo_re("output\nundistort_img1\nunrectify_depth")
+        unrectify --> stereo_re("output:　　　　\nundistort_img1\nunrectify_depth")
     end
 ```
 

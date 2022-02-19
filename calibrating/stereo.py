@@ -158,6 +158,44 @@ class Stereo:
         boxx.shows(viss)
         return viss
 
+    def precision_analysis(self, depth_limits=(0.25, 5)):
+        import matplotlib.pyplot as plt
+
+        K = self.cam1.K
+        baseline = self.baseline
+        zmin, zmax = min(depth_limits), max(depth_limits)
+        print(
+            "-" * 15, "Stereo.precision_analysis", "-" * 15,
+        )
+        print("Baseline: %.2fcm" % (100 * baseline))
+        print("cam1.xy:", self.cam1.xy)
+        print("cam1.fovs:", utils._str_angle_dic(self.cam1.fovs))
+        print("\n")
+        dispmin = baseline * K[0, 0] / zmax
+        dispmax = baseline * K[0, 0] / zmin
+        disps = np.linspace(dispmin, dispmax)
+        uncen_on_disp = -baseline * K[0, 0] / disps ** 2
+        zs = baseline * K[0, 0] / disps
+        disp_on_z = baseline * K[0, 0] / zs
+
+        print("Depth - disparity 关系:")
+        plt.plot(zs, disp_on_z)
+        plt.grid()
+        plt.show()
+        print("Depth - 单位Disparity深度范围关系(深度不确定度):")
+        plt.plot(zs, np.abs(uncen_on_disp))
+        plt.grid()
+        plt.show()
+        print("Depth - 单位像素在 xy 方向范围关系(xy不确定度):")
+        plt.plot(zs, zs / K[0, 0])
+        plt.grid()
+        plt.show()
+        # TODO
+        print("TODO: x,y 双目共同视野 - depth 关系:")
+        print(
+            "-" * 15, "End of Stereo.precision_analysis", "-" * 15,
+        )
+
     MAX_DEPTH = 10
 
     def get_max_depth(self):

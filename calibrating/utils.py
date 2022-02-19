@@ -107,6 +107,10 @@ def intrinsic_format_conversion(K_or_dic):
         return dic
 
 
+def _str_angle_dic(angle_dic):
+    return ", ".join(["%s=%s°" % (k, round(v, 2)) for k, v in angle_dic.items()])
+
+
 def _to_3x_uint8(arr):
     if arr.dtype != np.uint8:
         arr = boxx.uint8(boxx.norma(arr))

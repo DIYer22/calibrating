@@ -213,7 +213,7 @@ class Cam(dict):
     def stereo_with(caml, camr):
         return Stereo(caml, camr)
 
-    def vis_stereo(caml, camr, stereo=None, visn=4):
+    def vis_stereo(caml, camr, stereo=None, visn=1):
         if stereo is None:
             stereo = Stereo(caml, camr)
         visdir = TEMP + "/calibrating-stereo-vis/"
@@ -270,10 +270,11 @@ class Cam(dict):
 
     def __str__(self,):
         s = (
-            "Cam: \n\tname: '%s' \n\txy: %s\n\tvalid=%s/%s \n\tretval=%.2f \n\timage_path=%s\n"
+            "Cam: \n\tname: '%s' \n\txy: %s \n\tfovs: %s \n\tvalid=%s/%s \n\tretval=%.2f \n\timage_path=%s \n"
             % (
                 self.name,
                 self.xy,
+                utils._str_angle_dic(self.fovs),
                 len(self.__dict__.get("image_points", [])),
                 len(self),
                 self.__dict__.get("retval", -1),
@@ -324,6 +325,23 @@ class Cam(dict):
         new = type(self)()
         new.load(self.dump())
         return new
+
+    @property
+    def fx(self):
+        return self.K[0, 0]
+
+    @property
+    def fy(self):
+        return self.K[1, 1]
+
+    @property
+    def fovs(self):
+        fovx = 2 * boxx.arctan(self.xy[0] / 2 / self.fx)
+        fovy = 2 * boxx.arctan(self.xy[1] / 2 / self.fy)
+        fov = 2 * boxx.arctan(
+            (boxx.tan(fovx / 2) ** 2 + boxx.tan(fovy / 2) ** 2) ** 0.5
+        )
+        return dict(fov=fov, fovx=fovx, fovy=fovy)
 
     @classmethod
     def init_by_K_D(cls, K, D, xy, name=None):
