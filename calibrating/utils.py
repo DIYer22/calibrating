@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import os
 import cv2
 import boxx
 import numpy as np
+from glob import glob
 
 
 def R_t_to_T(R, t):
@@ -61,18 +63,18 @@ def point_cloud_to_depth(points, K, xy):
     xyzs[:, :2] /= xyzs[:, 2:]
 
     xyzs = np.array(sorted(xyzs, key=lambda xyz: -xyz[2]))
-    xyzs[:, :2] = xyzs[:, :2].round(0)
-    mask = (
-        (xyzs[:, 0] >= 0)
-        & (xyzs[:, 0] < xy[0])
-        & (xyzs[:, 1] >= 0)
-        & (xyzs[:, 1] < xy[1])
-    )
-    xyzs = xyzs[mask, :]
+    return xyzs_to_arr2d(xyzs, xy[::-1])
 
-    depth = np.zeros(xy[::-1])
-    depth[np.int32(xyzs[:, 1]), np.int32(xyzs[:, 0])] = xyzs[:, 2]
-    return depth
+
+def xyzs_to_arr2d(xyzs, hw=None, bg_value=0):
+    if hw is None:
+        hw = np.int32(xyzs.max(0)[:2].round()) + 1
+
+    xs, ys = np.int32(xyzs[:, :2].round()).T
+    mask = (xs >= 0) & (xs < hw[1]) & (ys >= 0) & (ys < hw[0])
+    arr2d = np.ones(hw, xyzs.dtype) * bg_value
+    arr2d[ys[mask], xs[mask]] = xyzs[:, 2][mask]
+    return arr2d
 
 
 def mean_Ts(Ts):
@@ -164,6 +166,42 @@ def vis_align(img1, img2, n_line=21, shows=True):
     if shows:
         boxx.shows(viss)
     return viss
+
+
+def get_test_cams(feature_type="checkboard"):
+    from calibrating import Cam, ArucoFeatureLib
+
+    if feature_type == "checkboard":
+        caml, camr, camd = Cam.get_test_cams()
+        return dict(caml=caml, camr=camr, camd=camd)
+    elif feature_type == "aruco":
+        root = os.path.abspath(
+            os.path.join(
+                __file__,
+                "../../../calibrating_example_data/paired_stereo_and_depth_cams_aruco",
+            )
+        )
+        feature_lib = ArucoFeatureLib()
+        caml = Cam(
+            glob(os.path.join(root, "*", "stereo_l.jpg")),
+            feature_lib,
+            name="caml",
+            enable_cache=True,
+        )
+        camr = Cam(
+            glob(os.path.join(root, "*", "stereo_r.jpg")),
+            feature_lib,
+            name="camr",
+            enable_cache=True,
+        )
+        camd = Cam(
+            glob(os.path.join(root, "*", "depth_cam_color.jpg")),
+            feature_lib,
+            name="camd",
+            undistorted=True,
+            enable_cache=True,
+        )
+        return dict(caml=caml, camr=camr, camd=camd)
 
 
 if __name__ == "__main__":

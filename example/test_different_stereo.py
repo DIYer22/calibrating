@@ -4,39 +4,7 @@ import cv2
 import boxx
 from boxx import os, glob, imread, np
 from calibrating import *
-from calibrating import Cam, ArucoFeatureLib, SemiGlobalBlockMatching, Stereo, vis_depth
-
-
-def get_test_cams(feature_type="checkboard"):
-    if feature_type == "checkboard":
-        return Cam.get_test_cams()
-    elif feature_type == "aruco":
-        root = os.path.abspath(
-            os.path.join(
-                __file__,
-                "../../../calibrating_example_data/paired_stereo_and_depth_cams_aruco",
-            )
-        )
-        feature_lib = ArucoFeatureLib()
-        caml = Cam(
-            glob(os.path.join(root, "*", "stereo_l.jpg")),
-            feature_lib,
-            name="caml",
-            enable_cache=True,
-        )
-        camr = Cam(
-            glob(os.path.join(root, "*", "stereo_r.jpg")),
-            feature_lib,
-            name="camr",
-            enable_cache=True,
-        )
-        camd = Cam(
-            glob(os.path.join(root, "*", "depth_cam_color.jpg")),
-            feature_lib,
-            name="camd",
-            enable_cache=True,
-        )
-        return caml, camr, camd
+from calibrating import Cam, SemiGlobalBlockMatching, Stereo, vis_depth, get_test_cams
 
 
 if __name__ == "__main__":
@@ -44,7 +12,8 @@ if __name__ == "__main__":
 
     feature_type = "checkboard"
     feature_type = "aruco"
-    caml, camr, camd = get_test_cams(feature_type)
+    cams = get_test_cams(feature_type)
+    caml, camr, camd = cams["caml"], cams["camr"], cams["camd"]
 
     key = caml.valid_keys_intersection(camd)[0]
     imgl = imread(caml[key]["path"])
@@ -58,12 +27,9 @@ if __name__ == "__main__":
     with boxx.timeit("project_cam2_depth"):
         depthl = caml.project_cam2_depth(camd, depthd, T_camd_in_caml)
         caml.vis_project_align(imgl, depthl)
-
-    print(Cam.load(camd.dump()))
     stereo = Stereo(caml, camr)
 
     stereo2 = Stereo.load(stereo.dump(return_dict=1))
-    # T = caml.get_T_cam2_in_self(camr)
     T = camr.get_T_cam2_in_self(caml)
     stereo2.T, stereo2.t = T[:3, :3], T[:3, 3:]
     stereo2._get_undistort_rectify_map()
@@ -101,7 +67,9 @@ if __name__ == "__main__":
     se = boxx.sliceInt[500:1000, 1600:2200]
     sds = list(map(lambda d: d[se], [depthl] + depths))
     boxx.show(undistort_imgl[se], list(map(vis_depth, sds)))
+
+    print_value = lambda d: (1000 * d[se][y : y + 10, x : x + 10].mean()).round(2)
     y, x = 0, 0
-    print(list(map(lambda d: d[se][y : y + 10, x : x + 10].mean(), [depthl] + depths)))
+    print("mm", list(map(print_value, depths)))
     y, x = -20, 350
-    print(list(map(lambda d: d[se][y : y + 10, x : x + 10].mean(), [depthl] + depths)))
+    print("mm", list(map(print_value, depths)))

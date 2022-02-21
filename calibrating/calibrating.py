@@ -138,6 +138,7 @@ class Cam(dict):
         feature_lib=None,
         save_feature_vis=True,
         name=None,
+        undistorted=False,
         enable_cache=False,
     ):
         super().__init__()
@@ -170,12 +171,25 @@ class Cam(dict):
         valid_keys = self.valid_keys()
         self.image_points = [self[key]["image_points"] for key in valid_keys]
         self.object_points = feature_lib.object_points
+        flags = 0
+        if undistorted:
+            flags = cv2.CALIB_ZERO_TANGENT_DIST + sum(
+                [
+                    cv2.CALIB_FIX_K1,
+                    cv2.CALIB_FIX_K2,
+                    cv2.CALIB_FIX_K3,
+                    cv2.CALIB_FIX_K4,
+                    cv2.CALIB_FIX_K5,
+                    cv2.CALIB_FIX_K6,
+                ]
+            )
         self.retval, self.K, self.D, rvecs, tvecs = cv2.calibrateCamera(
             [feature_lib.object_points] * len(self.image_points),
             self.image_points,
             self.xy,
             None,
             None,
+            flags=flags,
         )
 
         for idx, key in enumerate(valid_keys):
@@ -389,6 +403,7 @@ class Cam(dict):
             glob(os.path.join(root, "*", "depth_cam_color.jpg")),
             feature_lib,
             name="depth",
+            undistorted=True,
             enable_cache=True,
         )
         return caml, camr, camd
