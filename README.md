@@ -52,7 +52,7 @@ After a while, your browser will open:
 ```mermaid
 flowchart 
     subgraph "Stereo.get_depth(img1, img2)"
-        input(input: img1, img2)--> undistort
+        input(input:　\nimg1\nimg2)--> undistort
         undistort-->rectify
         undistort --> stereo_re
         subgraph StereoMatching
@@ -60,7 +60,7 @@ flowchart
         rectify --> StereoMatching
         StereoMatching --> disparity_to_depth
         disparity_to_depth --> unrectify
-        unrectify --> stereo_re("output:　　　　\nundistort_img1\nunrectify_depth")
+        unrectify --> stereo_re("output:　　　　\nrectify_img1\nrectify_depth")
     end
 ```
 

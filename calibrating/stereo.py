@@ -184,10 +184,10 @@ class Stereo:
         plt.show()
         print("Depth - 单位Disparity深度范围关系(深度不确定度):")
         plt.plot(zs, np.abs(uncen_on_disp))
-        plt.grid()
-        plt.show()
-        print("Depth - 单位像素在 xy 方向范围关系(xy不确定度):")
-        plt.plot(zs, zs / K[0, 0])
+        # plt.grid()
+        # plt.show()
+        # print("Depth - 单位像素在 xy 方向范围关系(xy不确定度):")
+        # plt.plot(zs, zs / K[0, 0])
         plt.grid()
         plt.show()
         # TODO
@@ -284,11 +284,14 @@ class Stereo:
         self.max_depth = max_depth or self.MAX_DEPTH
         self.min_disparity = int(self.cam1.K[0, 0] * self.baseline / self.max_depth)
 
-    def get_depth(self, img1, img2, return_distort_depth=False):
+    # TODO: return_unrectify_depth default False
+    def get_depth(
+        self, img1, img2, return_unrectify_depth=True, return_distort_depth=False
+    ):
         """
         Return:
-            undistort_img1
-            unrectify_depth
+            rectify_img1
+            rectify_depth
         The unit of depth is m
         """
         rectify_img1, rectify_img2 = self.rectify(img1, img2)
@@ -303,15 +306,16 @@ class Stereo:
             disparity += self.min_disparity
 
         rectify_depth = self.disparity_to_depth(disparity)
-        unrectify_depth = self.unrectify_depth(rectify_depth)
-        undistort_img1 = self.undistort_img(img1)
 
         result = dict(
-            undistort_img1=undistort_img1,
-            unrectify_depth=unrectify_depth,
-            rectify_depth=rectify_depth,
-            disparity=disparity,
+            rectify_img1=rectify_img1, rectify_depth=rectify_depth, disparity=disparity,
         )
+        if return_distort_depth or return_unrectify_depth:
+            unrectify_depth = self.unrectify_depth(rectify_depth)
+            undistort_img1 = self.undistort_img(img1)
+            result.update(
+                unrectify_depth=unrectify_depth, undistort_img1=undistort_img1,
+            )
         if return_distort_depth:
             result.update(
                 distort_img1=img1, distort_depth=self.distort_depth(unrectify_depth),

@@ -30,7 +30,7 @@
 ## TODO list
 - [ ] support Occlusion for external parameters
 - 和建冉沟通 calibrating 后
-    - [ ] 目的: 抽象出来并共用 Cam 模型
+    - 目的: 抽象出来并共用 Cam 模型
     - [ ] 支持被遮挡的 marker
     - [ ] 新增feature: chekboard + marker
     - [ ] 支持获得单板外参 Cam.get_calibration_board_T
@@ -40,6 +40,9 @@
     - [x] cam 支持预定义内参 K, D
     - [x] dumap and load yaml of KD
 ## Done
+- [x] `aruco` 的 `caml.vis_project_align(imgl, depthl)` 存在轻微没对齐
+    - 结论: 本来 depthd 在标定板边缘就有深度缺失
+    - 结论2: 用梅卡的内参反而不准了
 - [x] Stereo different intrinsic cams
 - [x] depth_to_disparity, disparity_to_depth
 - [x] init from known K, D
