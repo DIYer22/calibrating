@@ -308,7 +308,10 @@ class Stereo:
         rectify_depth = self.disparity_to_depth(disparity)
 
         result = dict(
-            rectify_img1=rectify_img1, rectify_depth=rectify_depth, disparity=disparity,
+            rectify_img1=rectify_img1,
+            rectify_depth=rectify_depth,
+            disparity=disparity,
+            rectify_img2=rectify_img2,
         )
         if return_distort_depth or return_unrectify_depth:
             unrectify_depth = self.unrectify_depth(rectify_depth)
