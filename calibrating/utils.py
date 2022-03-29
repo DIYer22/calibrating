@@ -122,7 +122,22 @@ def _to_3x_uint8(arr):
     return arr
 
 
-vis_depth = _to_3x_uint8
+def vis_depth(depth, slicen=0, fix_range=None, colormap=None):
+    if fix_range:
+        if isinstance(fix_range, (float, int)):
+            fix_range = (0, fix_range)
+        depth.clip(*fix_range)
+        normaed = (depth - fix_range[0]) / (fix_range[1] - fix_range[0])
+    else:
+        normaed = boxx.norma(depth)
+    if slicen:
+        normaed = (normaed * slicen) % 1
+        if colormap is None:
+            colormap = cv2.COLORMAP_HSV
+    depth_uint8 = np.uint8(normaed * 255.9)
+    vis = cv2.applyColorMap(depth_uint8, colormap or cv2.COLORMAP_JET)[..., ::-1]
+    vis[depth == 0] = 0
+    return vis
 
 
 def vis_stereo(img1, img2, n_line=21, thickness=0.03):
