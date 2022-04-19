@@ -123,6 +123,10 @@ def _to_3x_uint8(arr):
 
 
 def vis_depth(depth, slicen=0, fix_range=None, colormap=None):
+    if depth.ndim == 3 and depth.shape[-1] in [3, 4]:
+        return depth
+    if depth.dtype == np.uint16:
+        depth = depth / 1000.0
     raw_depth = depth
     if fix_range:
         if isinstance(fix_range, (float, int)):
