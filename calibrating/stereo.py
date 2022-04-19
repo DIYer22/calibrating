@@ -339,26 +339,42 @@ class MetaStereoMatching:
 
 # A Example of StereoMatching class
 class SemiGlobalBlockMatching(MetaStereoMatching):
-    def __init__(self, cfg):
-        default_cfg = {
-            "max_size": 1000,
-            # SGBM_args
-            "P1": 4590,
-            "P2": 18360,
-            "blockSize": 5,
-            "disp12MaxDiff": 1,
-            "minDisparity": 2,
-            "mode": 2,
-            "numDisparities": 80,
-            "preFilterCap": 63,
-            "speckleRange": 2,
-            "speckleWindowSize": 0,
-            "uniquenessRatio": 15,
-        }
-        default_cfg.update(cfg)
-        self.cfg = default_cfg
-        self.max_size = self.cfg.pop("max_size")
-        self.stereo_sgbm = cv2.StereoSGBM_create(**self.cfg)
+    def __init__(self, cfg=None):
+        if cfg is None:
+            cfg = {}
+        self.cfg = cfg
+        self.max_size = self.cfg.get("max_size", 1000)
+
+        # StereoSGBM_create from https://gist.github.com/andijakl/ffe6e5e16742455291ef2a4edbe63cb7
+        block_size = 11
+        min_disp = 2
+        max_disp = 80
+        # Maximum disparity minus minimum disparity. The value is always greater than zero.
+        # In the current implementation, this parameter must be divisible by 16.
+        num_disp = max_disp - min_disp
+        # Margin in percentage by which the best (minimum) computed cost function value should "win" the second best value to consider the found match correct.
+        # Normally, a value within the 5-15 range is good enough
+        uniquenessRatio = 5
+        # Maximum size of smooth disparity regions to consider their noise speckles and invalidate.
+        # Set it to 0 to disable speckle filtering. Otherwise, set it somewhere in the 50-200 range.
+        speckleWindowSize = 200
+        # Maximum disparity variation within each connected component.
+        # If you do speckle filtering, set the parameter to a positive value, it will be implicitly multiplied by 16.
+        # Normally, 1 or 2 is good enough.
+        speckleRange = 2
+        disp12MaxDiff = 0
+
+        self.stereo_sgbm = cv2.StereoSGBM_create(
+            minDisparity=min_disp,
+            numDisparities=num_disp,
+            blockSize=block_size,
+            uniquenessRatio=uniquenessRatio,
+            speckleWindowSize=speckleWindowSize,
+            speckleRange=speckleRange,
+            disp12MaxDiff=disp12MaxDiff,
+            P1=8 * 1 * block_size * block_size,
+            P2=32 * 1 * block_size * block_size,
+        )
 
     def __call__(self, img1, img2):
         resize_ratio = min(self.max_size / max(img1.shape[:2]), 1)
@@ -366,7 +382,9 @@ class SemiGlobalBlockMatching(MetaStereoMatching):
         sdisparity = (self.stereo_sgbm.compute(simg1, simg2).astype(np.float32)).clip(
             0
         ) / 16.0
-        disparity = boxx.resize(sdisparity, 1 / resize_ratio) / resize_ratio
+        disparity = (
+            boxx.resize(sdisparity, img1.shape[:2]) * img1.shape[1] / simg1.shape[1]
+        )
         return disparity
 
 
