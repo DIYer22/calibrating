@@ -64,7 +64,7 @@ class CheckboardFeatureLib(MetaFeatureLib):
             d["image_points"] = corners
 
     def vis(self, d, cam=None):
-        img = boxx.imread(d["path"])
+        img = d["img"] if "img" in d else boxx.imread(d["path"])
         h, w = img.shape[:2]
         draw_subpix = h < 1500
         if draw_subpix:
@@ -110,7 +110,7 @@ class ArucoFeatureLib(MetaFeatureLib):
             d["image_points"] = d["sorted_corners"].reshape(-1, 2)[:None]
 
     def vis(self, d, cam=None):
-        img = boxx.imread(d["path"])
+        img = d["img"] if "img" in d else boxx.imread(d["path"])
         cv2.aruco.drawDetectedMarkers(img, d["corners"], d["ids"])
         if cam is not None and len(d["corners"]):
             rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(
@@ -144,7 +144,8 @@ class Cam(dict):
         super().__init__()
         if img_paths is None:
             return
-        assert len(img_paths) and len(img_paths) == len(set(img_paths))
+        assert len(img_paths), img_paths
+        assert len(img_paths) == len(set(img_paths))
         self.feature_lib = feature_lib
         if isinstance(img_paths, (list, tuple)):
             left_idx, right_idx = self.get_key_idx(img_paths)
@@ -161,8 +162,8 @@ class Cam(dict):
             d = {}
             d["path"] = path
 
-            d["img"] = boxx.imread(path)
-            self.xy = d["img"].shape[1], d["img"].shape[0]
+            img = boxx.imread(path)
+            d["img"] = self.process_img(img)
             feature_lib.find_image_points(d)
             d.pop("img")
             self[key] = d
@@ -204,8 +205,10 @@ class Cam(dict):
             os.makedirs(visdir, exist_ok=True)
             for key in tqdm(valid_keys):
                 d = self[key]
+                d["img"] = self.process_img(imread(d["path"]))
                 vis = feature_lib.vis(d, self)
                 boxx.imsave(visdir + "/" + key + ".jpg", vis)
+                d.pop("img")
 
     def _cache(self, do_cache=False):
         cache_path = TEMP + "/calibrating-cache-" + self.name + ".pkl"
@@ -223,6 +226,22 @@ class Cam(dict):
             pickle.dump(self, open(cache_path, "wb"))
             print(self)
         return False
+
+    def process_img(self, img):
+        """
+        rotate90 img if xy != self.xy
+        """
+        xy = img.shape[1], img.shape[0]
+        if not hasattr(self, "xy"):
+            self.xy = xy
+        else:
+            if xy == self.xy:
+                pass
+            elif xy[::-1] == self.xy:
+                img = np.ascontiguousarray(np.rot90(img))
+            else:
+                assert set(xy) == set(self.xy), f"{xy} != {self.xy}"
+        return img
 
     def stereo_with(caml, camr):
         return Stereo(caml, camr)
