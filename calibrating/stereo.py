@@ -3,6 +3,7 @@ import cv2
 import yaml
 import boxx
 import numpy as np
+from functools import wraps
 
 with boxx.inpkg():
     from . import utils
@@ -147,7 +148,14 @@ class Stereo:
             return cv2.imread(path_or_np)[..., ::-1]
         return path_or_np
 
-    vis = staticmethod(utils.vis_stereo)
+    @wraps(utils.vis_stereo)
+    def vis(self, *args, **argkws):
+        if not args:
+            key = list(self.cam1)[0]
+            img1 = boxx.imread(self.cam1[key]["path"])
+            img2 = boxx.imread(self.cam2[key]["path"])
+            args = self.rectify(img1, img2)
+        return utils.vis_stereo(*args, **argkws)
 
     @classmethod
     def shows(cls, *l, **kv):
@@ -167,9 +175,7 @@ class Stereo:
         print(
             "-" * 15, "Stereo.precision_analysis", "-" * 15,
         )
-        print("Baseline: %.2fcm" % (100 * baseline))
-        print("cam1.xy:", self.cam1.xy)
-        print("cam1.fovs:", utils._str_angle_dic(self.cam1.fovs))
+        print(self)
         print("\n")
         dispmin = baseline * K[0, 0] / zmax
         dispmax = baseline * K[0, 0] / zmin
@@ -195,6 +201,15 @@ class Stereo:
         print(
             "-" * 15, "End of Stereo.precision_analysis", "-" * 15,
         )
+
+    def __str__(self):
+        strr = "Stereo:\n"
+        strr += "\tBaseline: %.2fcm\n" % (100 * self.baseline)
+        strr += "\tcam1.xy: %s\n" % str(self.cam1.xy)
+        strr += "\tcam1.fovs: %s" % str(utils._str_angle_dic(self.cam1.fovs))
+        return strr
+
+    __repr__ = __str__
 
     MAX_DEPTH = 10
 
