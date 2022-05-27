@@ -40,11 +40,46 @@ class Stereo:
         self.get_R_t_by_stereo_calibrate()
         self._get_undistort_rectify_map()
 
+    def get_conjoint_points(self):
+        if isinstance(next(iter(self.cam1.values())), dict):
+            conjoint_image_points1, conjoint_image_points2, conjoint_object_points = (
+                [],
+                [],
+                [],
+            )
+            for key in self.cam1:
+                a, b, c = [], [], []
+                for id in self.cam1[key].get("image_points", {}):
+                    if key in self.cam2 and id in self.cam2[key].get(
+                        "image_points", {}
+                    ):
+                        a.append(self.cam1[key]["image_points"][id])
+                        b.append(self.cam2[key]["image_points"][id])
+                        c.append(self.cam1[key]["object_points"][id])
+                if a:
+                    conjoint_image_points1.append(np.concatenate(a, 0))
+                    conjoint_image_points2.append(np.concatenate(b, 0))
+                    conjoint_object_points.append(np.concatenate(c, 0))
+            return (
+                conjoint_image_points1,
+                conjoint_image_points2,
+                conjoint_object_points,
+            )
+        else:
+            return (
+                self.cam1.image_points,
+                self.cam2.image_points,
+                self.cam1.object_points,
+            )
+
     def get_R_t_by_stereo_calibrate(self):
-        keys = self.cam1.valid_keys_intersection(self.cam2)
-        image_points1 = [self.cam1[key]["image_points"] for key in keys]
-        image_points2 = [self.cam2[key]["image_points"] for key in keys]
-        object_points = [self.cam1.object_points] * len(keys)
+
+        (
+            conjoint_image_points1,
+            conjoint_image_points2,
+            conjoint_object_points,
+        ) = self.get_conjoint_points()
+
         if self.force_same_intrinsic:
             self.cam2 = self.cam2.copy()
             self.cam2.K = self.cam1.K
@@ -59,9 +94,9 @@ class Stereo:
             1e-5,
         )
         ret, _, _, _, _, self.R, self.t, E, F = cv2.stereoCalibrate(
-            object_points,
-            image_points1,
-            image_points2,
+            conjoint_object_points,
+            conjoint_image_points1,
+            conjoint_image_points2,
             self.cam1.K,
             self.cam1.D,
             self.cam2.K,

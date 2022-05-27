@@ -23,19 +23,29 @@ TEMP = __import__("tempfile").gettempdir()
 
 class MetaFeatureLib:
     def find_image_points(self, d):
-        raise NotImplementedError()
-
-    @staticmethod
-    def object_points(self):
+        """
+        d is a dict for each checkboard image, including keys like "img", "path"
+        
+        Please calculate d["image_points"] and d["object_points"] base on d["img"]
+    
+        The method should:
+            Set d["image_points"] as np.array of shape(n, 2) or {id: shape(n, 2)}
+            Set d["object_points"] as np.array of shape(n, 3) or {id: shape(n, 3)}
+            You could set some other important data in dict d
+        """
         raise NotImplementedError()
 
     def vis(self, d, cam=None):
-        raise NotImplementedError()
-
-    def set_Ts(self, d, cam=None):
-        if "T" in d:
-            d["Ts"] = [d["T"]]
-        return d.get("Ts", [])
+        """
+        d is a dict for each checkboard image, including keys like "img", "path"
+        
+        return:
+            vis: np.array(h, w, 3)
+        """
+        image_points = d["image_points"]
+        if isinstance(image_points, dict):
+            image_points = np.concatenate(list(image_points.values()), 0)
+        return utils.vis_point_uvs(image_points, d["img"])
 
 
 class CheckboardFeatureLib(MetaFeatureLib):
@@ -62,9 +72,10 @@ class CheckboardFeatureLib(MetaFeatureLib):
             )
             d["corners"] = corners
             d["image_points"] = corners
+            d["object_points"] = self.object_points
 
     def vis(self, d, cam=None):
-        img = d["img"] if "img" in d else boxx.imread(d["path"])
+        img = d["img"].copy() if "img" in d else boxx.imread(d["path"])
         h, w = img.shape[:2]
         draw_subpix = h < 1500
         if draw_subpix:
@@ -79,13 +90,15 @@ class CheckboardFeatureLib(MetaFeatureLib):
 
 
 class ArucoFeatureLib(MetaFeatureLib):
-    def __init__(self):
+    def __init__(self, occlusion=False):
         import cv2.aruco
 
+        self.occlusion = occlusion
         aruco_temp_str = "480 240 0 580 240 0 580 340 0 480 340 0 480 120 0 580 120 0 580 220 0 480 220 0 480 0 0 580 0 0 580 100 0 480 100 0 0 360 0 100 360 0 100 460 0 0 460 0 480 360 0 580 360 0 580 460 0 480 460 0 480 480 0 580 480 0 580 580 0 480 580 0 360 480 0 460 480 0 460 580 0 360 580 0 240 480 0 340 480 0 340 580 0 240 580 0 120 480 0 220 480 0 220 580 0 120 580 0 0 480 0 100 480 0 100 580 0 0 580 0 0 240 0 100 240 0 100 340 0 0 340 0 0 120 0 100 120 0 100 220 0 0 220 0 0 0 0 100 0 0 100 100 0 0 100 0 120 0 0 220 0 0 220 100 0 120 100 0 240 0 0 340 0 0 340 100 0 240 100 0 360 0 0 460 0 0 460 100 0 360 100 0 120 120 0 220 120 0 220 220 0 120 220 0 240 120 0 340 120 0 340 220 0 240 220 0 360 120 0 460 120 0 460 220 0 360 220 0 120 360 0 220 360 0 220 460 0 120 460 0 360 360 0 460 360 0 460 460 0 360 460 0 240 360 0 340 360 0 340 460 0 240 460 0 120 240 0 220 240 0 220 340 0 120 340 0 360 240 0 460 240 0 460 340 0 360 340 0"
-        self.object_points = np.float32(
+        self.all_object_points = np.float32(
             np.array(boxx.findints(aruco_temp_str)).reshape(-1, 3) / 1000.0
         )
+        self.object_points = dict(enumerate(self.all_object_points.reshape(-1, 4, 3)))
         self.aruco_dict_idx = cv2.aruco.DICT_6X6_250
 
     def find_image_points(self, d):
@@ -95,22 +108,18 @@ class ArucoFeatureLib(MetaFeatureLib):
         d["corners"], d["ids"], rejectedImgPoints = cv2.aruco.detectMarkers(
             gray, cv2.aruco.Dictionary_get(self.aruco_dict_idx), parameters=parameters
         )
-        d["valid"] = d["ids"] is not None and len(d["ids"]) * 4 == len(
-            self.object_points
+        d["valid"] = d["ids"] is not None and (
+            len(d["ids"]) * 4 == len(self.object_points) or self.occlusion
         )
         if d["valid"]:
-            d["sorted_corners"] = np.concatenate(
-                [
-                    point
-                    for idx, point in sorted(
-                        enumerate(d["corners"]), key=lambda x: d["ids"][x[0]]
-                    )
-                ]
+            d["ids"] = d["ids"][:, 0] if d["ids"].ndim == 2 else d["ids"]
+            d["image_points"] = dict(
+                zip(d["ids"], [corner.squeeze() for corner in d["corners"]])
             )
-            d["image_points"] = d["sorted_corners"].reshape(-1, 2)[:None]
+            d["object_points"] = {id: self.object_points[id] for id in d["ids"]}
 
     def vis(self, d, cam=None):
-        img = d["img"] if "img" in d else boxx.imread(d["path"])
+        img = d["img"].copy() if "img" in d else boxx.imread(d["path"])
         cv2.aruco.drawDetectedMarkers(img, d["corners"], d["ids"])
         if cam is not None and len(d["corners"]):
             rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(
@@ -119,16 +128,6 @@ class ArucoFeatureLib(MetaFeatureLib):
             for i in range(rvec.shape[0]):
                 cv2.aruco.drawAxis(img, cam.K, cam.D, rvec[i], tvec[i], 0.05)
         return img
-
-    def set_Ts_by_markers(self, d, cam=None):
-        if "image_points" in d:
-            rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(
-                d["sorted_corners"], 0.1, cam.K, cam.D
-            )
-
-            d["Ts"] = [utils.r_t_to_T(r, t) for r, t in zip(rvec, tvec)]
-
-    # set_Ts = set_Ts_by_markers
 
 
 class Cam(dict):
@@ -167,11 +166,13 @@ class Cam(dict):
             feature_lib.find_image_points(d)
             d.pop("img")
             self[key] = d
-            # break
 
-        valid_keys = self.valid_keys()
-        self.image_points = [self[key]["image_points"] for key in valid_keys]
-        self.object_points = feature_lib.object_points
+        self.valid_keys = set(
+            [key for key in self if len(self[key].get("image_points", {}))]
+        )
+        self.image_points = self._get_points_for_cv2("image_points")
+        self.object_points = self._get_points_for_cv2("object_points")
+
         flags = 0
         if undistorted:
             flags = cv2.CALIB_ZERO_TANGENT_DIST + sum(
@@ -184,26 +185,21 @@ class Cam(dict):
                     cv2.CALIB_FIX_K6,
                 ]
             )
+
         self.retval, self.K, self.D, rvecs, tvecs = cv2.calibrateCamera(
-            [feature_lib.object_points] * len(self.image_points),
-            self.image_points,
-            self.xy,
-            None,
-            None,
-            flags=flags,
+            self.object_points, self.image_points, self.xy, None, None, flags=flags,
         )
 
-        for idx, key in enumerate(valid_keys):
+        for idx, key in enumerate(self.valid_keys):
             d = self[key]
             d["T"] = r_t_to_T(rvecs[idx], tvecs[idx])
-            feature_lib.set_Ts(d, self)
 
         self._cache(do_cache=True)
         if save_feature_vis:
             visdir = TEMP + "/calibrating-vis-" + self.name
             print("\nSave visualization of feature points in dir:", visdir)
             os.makedirs(visdir, exist_ok=True)
-            for key in tqdm(valid_keys):
+            for key in tqdm(self.valid_keys):
                 d = self[key]
                 d["img"] = self.process_img(imread(d["path"]))
                 vis = feature_lib.vis(d, self)
@@ -260,16 +256,29 @@ class Cam(dict):
         stereo.shows(*stereo.rectify(imgl, imgr))
         return stereo
 
+    def get_calibration_board_T(self, img):
+        assert img.shape[:2][::-1] == self.xy
+        d = dict(img=img)
+        self.feature_lib.find_image_points(d)
+        if isinstance(d["image_points"], dict):
+            d["image_points"] = np.concatenate(
+                [d["image_points"][k] for k in sorted(d["image_points"])], 0
+            )
+            d["object_points"] = np.concatenate(
+                [d["object_points"][k] for k in sorted(d["object_points"])], 0
+            )
+        retval, rvecs, tvecs, reprojectionError = cv2.solvePnPGeneric(
+            d["object_points"], d["image_points"][:, None], self.K, self.D
+        )
+        T_board_in_cam = utils.r_t_to_T(rvecs[0], tvecs[0])
+        d.update(T=T_board_in_cam, reprojectionError=reprojectionError, retval=retval)
+        return d
+
     def get_T_cam2_in_self(cam1, cam2):
         Ts = []
         keys = cam1.valid_keys_intersection(cam2)
         for key in keys:
-            Ts.extend(
-                [
-                    T1 @ np.linalg.inv(T2)
-                    for T1, T2 in zip(cam1[key]["Ts"], cam2[key]["Ts"])
-                ]
-            )
+            Ts.append(cam1[key]["T"] @ np.linalg.inv(cam2[key]["T"]))
 
         T = utils.mean_Ts(Ts)
         return T
@@ -295,11 +304,19 @@ class Cam(dict):
         depth_vis = np.uint8(cv2.applyColorMap(depth_uint8, cv2.COLORMAP_JET) * 0.75)
         return utils.vis_align(img, depth_vis)
 
-    def valid_keys(self):
-        return set([key for key in self if "image_points" in self[key]])
+    def _get_points_for_cv2(self, name="image_points"):
+        points = [self[key][name] for key in self.valid_keys]
+        if isinstance(points[0], dict):
+            points = [
+                np.concatenate(
+                    [id_to_points[id] for id in sorted(id_to_points)], axis=0
+                )
+                for id_to_points in points
+            ]
+        return points
 
     def valid_keys_intersection(cam1, cam2):
-        return sorted(cam1.valid_keys().intersection(cam2.valid_keys()))
+        return sorted(cam1.valid_keys.intersection(cam2.valid_keys))
 
     def __str__(self,):
         s = (
