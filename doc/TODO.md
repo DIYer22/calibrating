@@ -32,7 +32,7 @@
 - [ ] 自动测试用例
 - 和建冉沟通 calibrating 后
     - 目的: 抽象出来并共用 Cam 模型
-    - [ ] ~~去掉 boxx 强依赖~~
+    - [ ] 去掉 boxx 强依赖
     - [ ] 新增feature: chekboard + marker
     - [ ] 兼容 py3.6
     - [x] cam 支持预定义内参 K, D

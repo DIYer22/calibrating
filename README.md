@@ -8,11 +8,11 @@ Calibrate the internal and external parameters of cameras, rectify stereo camera
 - [High-level API](example/checkboard_example.py) that simplifies calibration steps
 - Rich visualization to verify the calibration effect. e.g. [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
 - Very easy to install and run example
-- Automatically ignore non-compliant images
-- Decoupling the feature extraction and calibration process, support both checkboard and markers(`cv2.aruco`)
 - Mature [stereo module](calibrating/stereo.py) for correctly calculate the depth
+- Decoupling the feature extraction and calibration process, support both checkboard and markers(`cv2.aruco`)
 - Provide camera internal and external parameters standard, which can be exported as `.yaml`
-
+- Support for [occluded marker](example/test_occlude_marker.py)
+- Automatically ignore non-compliant images
 ## ▮ Install
 ```bash
 pip3 install calibrating
