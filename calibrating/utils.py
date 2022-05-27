@@ -145,6 +145,36 @@ def vis_depth(depth, slicen=0, fix_range=None, colormap=None):
     return vis
 
 
+def vis_point_uvs(uvs, img_or_shape=None, size=None, color=None):
+    if isinstance(img_or_shape, np.ndarray) and img_or_shape.ndim >= 2:
+        vis = img_or_shape.copy()
+    else:
+        if img_or_shape is None:
+            img_or_shape = [int(uvs[:, :2].max() * 1.1)] * 2
+        vis = np.ones(img_or_shape, np.uint8) * 128
+    if vis.ndim == 2:
+        vis = np.concatenate([vis[:, :, None]] * 3, -1)
+    if size is None:
+        size = 1.0
+    if size < 5 and isinstance(size, float):
+        size = np.sum(vis.shape[:2]) * 0.001 * size
+        size = max(1, size)
+    size = int(round(size))
+    for idx, uv in enumerate(uvs):
+        if color is None:
+            vis = cv2.circle(
+                vis, tuple(np.int32(uv[:2])), size * 2, (255, 255, 255), -1
+            )
+        vis = cv2.circle(
+            vis,
+            tuple(np.int32(uv[:2])),
+            size,
+            (255, 0, 0) if color is None else color,
+            -1,
+        )
+    return vis
+
+
 def vis_stereo(img1, img2, n_line=21, thickness=0.03):
     """
     Draw lines on stereo image pairs, two cases of horizontal rectify and vertical rectify.
