@@ -31,7 +31,7 @@ class MetaFeatureLib:
         The method should:
             Set d["image_points"] as np.array of shape(n, 2) or {id: shape(n, 2)}
             Set d["object_points"] as np.array of shape(n, 3) or {id: shape(n, 3)}
-            You could set some other important data in dict d
+            You could store some other important data in dict d
         """
         raise NotImplementedError()
 
@@ -256,10 +256,13 @@ class Cam(dict):
         stereo.shows(*stereo.rectify(imgl, imgr))
         return stereo
 
-    def get_calibration_board_T(self, img):
+    def get_calibration_board_T(self, img, feature_lib=None):
+        if feature_lib is None:
+            assert hasattr(self, "feature_lib"), "Please set feature_lib"
+            feature_lib = self.feature_lib
         assert img.shape[:2][::-1] == self.xy
         d = dict(img=img)
-        self.feature_lib.find_image_points(d)
+        feature_lib.find_image_points(d)
         if isinstance(d["image_points"], dict):
             d["image_points"] = np.concatenate(
                 [d["image_points"][k] for k in sorted(d["image_points"])], 0
@@ -494,6 +497,7 @@ if __name__ == "__main__":
     print(Cam.load(camd.dump()))
 
     stereo = Stereo(caml, camr)
+    print(stereo)
 
     T_camd_in_caml = caml.get_T_cam2_in_self(camd)
     key = caml.valid_keys_intersection(camd)[0]

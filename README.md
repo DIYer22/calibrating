@@ -23,7 +23,7 @@ Example images are captured by paired_stereo_and_depth_cams:
 
 ```bash
 pip3 install calibrating
-# Prepare example data(120MB): checkboard images of paired stereo and depth cameras
+# Prepare example data(100MB): checkboard images of paired stereo and depth cameras
 git clone https://github.com/yl-data/calibrating_example_data
 
 # Prepare example code

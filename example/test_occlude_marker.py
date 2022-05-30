@@ -41,7 +41,7 @@ if __name__ == "__main__":
     )
 
     stereo = Stereo(caml, camr)
-    # shows - stereo.vis()
+    shows - stereo.vis()
     print(stereo)
 
     key = sorted(caml)[0]

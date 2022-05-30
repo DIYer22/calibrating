@@ -27,6 +27,7 @@ camd = calibrating.Cam(glob(f"{checkboard_img_dir}/*/depth_cam_color.jpg"), feat
 
 # Calibrate stereo cameras and visualization rectify effect
 stereo = calibrating.Stereo(caml, camr)
+print(stereo)
 # rectified1, rectified2 = stereo.rectify(img1, img2)
 caml.vis_stereo(camr, stereo)
 

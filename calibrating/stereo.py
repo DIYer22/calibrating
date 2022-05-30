@@ -41,7 +41,16 @@ class Stereo:
         self._get_undistort_rectify_map()
 
     def get_conjoint_points(self):
-        if isinstance(next(iter(self.cam1.values())), dict):
+        image_points = list(self.cam1.values())[0]["image_points"]
+        # "image_points" is checkboard type: shape(n, 2)
+        if isinstance(image_points, np.ndarray):
+            keys = self.cam1.valid_keys_intersection(self.cam2)
+            conjoint_image_points1 = [self.cam1[key]["image_points"] for key in keys]
+            conjoint_image_points2 = [self.cam2[key]["image_points"] for key in keys]
+            conjoint_object_points = [self.cam1[key]["object_points"] for key in keys]
+
+        # "image_points" is marker type: {id: shape(n, 2)}
+        elif isinstance(image_points, dict):
             conjoint_image_points1, conjoint_image_points2, conjoint_object_points = (
                 [],
                 [],
@@ -60,17 +69,11 @@ class Stereo:
                     conjoint_image_points1.append(np.concatenate(a, 0))
                     conjoint_image_points2.append(np.concatenate(b, 0))
                     conjoint_object_points.append(np.concatenate(c, 0))
-            return (
-                conjoint_image_points1,
-                conjoint_image_points2,
-                conjoint_object_points,
-            )
-        else:
-            return (
-                self.cam1.image_points,
-                self.cam2.image_points,
-                self.cam1.object_points,
-            )
+        return (
+            conjoint_image_points1,
+            conjoint_image_points2,
+            conjoint_object_points,
+        )
 
     def get_R_t_by_stereo_calibrate(self):
 
@@ -185,6 +188,8 @@ class Stereo:
 
     @wraps(utils.vis_stereo)
     def vis(self, *args, **argkws):
+        if not isinstance(self, Stereo):
+            args = (self,) + args
         if not args:
             key = list(self.cam1)[0]
             img1 = boxx.imread(self.cam1[key]["path"])
@@ -398,7 +403,7 @@ class SemiGlobalBlockMatching(MetaStereoMatching):
         # StereoSGBM_create from https://gist.github.com/andijakl/ffe6e5e16742455291ef2a4edbe63cb7
         block_size = 11
         min_disp = 2
-        max_disp = 80
+        max_disp = 220
         # Maximum disparity minus minimum disparity. The value is always greater than zero.
         # In the current implementation, this parameter must be divisible by 16.
         num_disp = max_disp - min_disp
@@ -445,6 +450,7 @@ if __name__ == "__main__":
     cam1, cam2, camd = Cam.get_test_cams()
 
     stereo = Stereo(cam1, cam2)
+    print(stereo)
 
     yaml_path = "/tmp/stereo.yaml"
     stereo.dump(yaml_path)
