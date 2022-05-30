@@ -109,7 +109,7 @@ class ArucoFeatureLib(MetaFeatureLib):
             gray, cv2.aruco.Dictionary_get(self.aruco_dict_idx), parameters=parameters
         )
         d["valid"] = d["ids"] is not None and (
-            len(d["ids"]) * 4 == len(self.object_points) or self.occlusion
+            len(d["ids"]) == len(self.object_points) or self.occlusion
         )
         if d["valid"]:
             d["ids"] = d["ids"][:, 0] if d["ids"].ndim == 2 else d["ids"]
