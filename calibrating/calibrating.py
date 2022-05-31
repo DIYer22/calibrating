@@ -90,10 +90,11 @@ class CheckboardFeatureLib(MetaFeatureLib):
 
 
 class ArucoFeatureLib(MetaFeatureLib):
-    def __init__(self, occlusion=False):
+    def __init__(self, occlusion=False, detector_parameters=None):
         import cv2.aruco
 
         self.occlusion = occlusion
+        self.detector_parameters = detector_parameters or {}
         aruco_temp_str = "480 240 0 580 240 0 580 340 0 480 340 0 480 120 0 580 120 0 580 220 0 480 220 0 480 0 0 580 0 0 580 100 0 480 100 0 0 360 0 100 360 0 100 460 0 0 460 0 480 360 0 580 360 0 580 460 0 480 460 0 480 480 0 580 480 0 580 580 0 480 580 0 360 480 0 460 480 0 460 580 0 360 580 0 240 480 0 340 480 0 340 580 0 240 580 0 120 480 0 220 480 0 220 580 0 120 580 0 0 480 0 100 480 0 100 580 0 0 580 0 0 240 0 100 240 0 100 340 0 0 340 0 0 120 0 100 120 0 100 220 0 0 220 0 0 0 0 100 0 0 100 100 0 0 100 0 120 0 0 220 0 0 220 100 0 120 100 0 240 0 0 340 0 0 340 100 0 240 100 0 360 0 0 460 0 0 460 100 0 360 100 0 120 120 0 220 120 0 220 220 0 120 220 0 240 120 0 340 120 0 340 220 0 240 220 0 360 120 0 460 120 0 460 220 0 360 220 0 120 360 0 220 360 0 220 460 0 120 460 0 360 360 0 460 360 0 460 460 0 360 460 0 240 360 0 340 360 0 340 460 0 240 460 0 120 240 0 220 240 0 220 340 0 120 340 0 360 240 0 460 240 0 460 340 0 360 340 0"
         self.all_object_points = np.float32(
             np.array(boxx.findints(aruco_temp_str)).reshape(-1, 3) / 1000.0
@@ -103,8 +104,14 @@ class ArucoFeatureLib(MetaFeatureLib):
 
     def find_image_points(self, d):
         img = d["img"]
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         parameters = cv2.aruco.DetectorParameters_create()
+        self.detector_parameters.setdefault("polygonalApproxAccuracyRate", 0.008)
+        [
+            setattr(parameters, key, value)
+            for key, value in self.detector_parameters.items()
+        ]
+
         d["corners"], d["ids"], rejectedImgPoints = cv2.aruco.detectMarkers(
             gray, cv2.aruco.Dictionary_get(self.aruco_dict_idx), parameters=parameters
         )
