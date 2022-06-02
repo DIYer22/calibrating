@@ -21,8 +21,16 @@ def r_t_to_T(r, t):
 
 
 def T_to_r(T):
-    r = cv2.Rodrigues(T[:3, :3])[0]
-    return r
+    rvec = cv2.Rodrigues(T[:3, :3])[0]
+    return rvec
+
+
+def T_to_r_t(T):
+    rvec = T_to_r(T)
+    tvec = T[:3, 3:]
+    if not tvec.size:
+        tvec = np.zeros((3, 1))
+    return rvec, tvec
 
 
 def apply_T_to_point_cloud(T, point_cloud):
@@ -145,7 +153,18 @@ def vis_depth(depth, slicen=0, fix_range=None, colormap=None):
     return vis
 
 
-def vis_point_uvs(uvs, img_or_shape=None, size=None, color=None):
+def vis_point_uvs(
+    uvs,
+    img_or_shape=None,
+    size=None,
+    color=None,
+    contour=False,
+    convex_hull=False,
+    full_connect=False,
+):
+    if uvs.ndim == 3 and uvs.shape[1] == 1:
+        uvs = uvs[:, 0]
+    uvs = np.int32(uvs.round())
     if isinstance(img_or_shape, np.ndarray) and img_or_shape.ndim >= 2:
         vis = img_or_shape.copy()
     else:
@@ -160,18 +179,26 @@ def vis_point_uvs(uvs, img_or_shape=None, size=None, color=None):
         size = np.sum(vis.shape[:2]) * 0.001 * size
         size = max(1, size)
     size = int(round(size))
+    _color = (255, 0, 0) if color is None else color
+    _draw_contour = False
+    if convex_hull:
+        contour_points = cv2.convexHull(uvs)
+        _draw_contour = True
+    if contour:
+        contour_points = uvs
+        _draw_contour = True
+    if _draw_contour:
+        cv2.drawContours(
+            vis, [np.int32(contour_points.round())], 0, _color, size * 2 // 3
+        )
+    if full_connect:
+        for i in range(len(uvs) - 1):
+            for j in range(i, len(uvs)):
+                cv2.line(vis, uvs[i], uvs[j], _color, size * 2 // 3)
     for idx, uv in enumerate(uvs):
         if color is None:
-            vis = cv2.circle(
-                vis, tuple(np.int32(uv[:2])), size * 2, (255, 255, 255), -1
-            )
-        vis = cv2.circle(
-            vis,
-            tuple(np.int32(uv[:2])),
-            size,
-            (255, 0, 0) if color is None else color,
-            -1,
-        )
+            vis = cv2.circle(vis, tuple(uv[:2]), size * 2, (255, 255, 255), -1)
+        vis = cv2.circle(vis, tuple(uv[:2]), size, _color, -1,)
     return vis
 
 
@@ -184,10 +211,7 @@ def vis_T(T, cam=None, img=None, length=0.1):
         vis = np.ones(list(cam.xy[::-1]) + [3], np.uint8) * 128
     else:
         vis = img.copy()
-    rvec = cv2.Rodrigues(T[:3, :3])[0]
-    tvec = T[:3, 3:]
-    if not tvec.size:
-        tvec = np.zeros((3, 1))
+    rvec, tvec = T_to_r_t(T)
     cv2.aruco.drawAxis(vis, cam.K, cam.D, rvec, tvec, length)
     return vis
 

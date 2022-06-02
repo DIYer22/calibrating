@@ -290,6 +290,13 @@ class Cam(dict):
         d.update(T=T_board_in_cam, reprojectionError=reprojectionError, retval=retval)
         return d
 
+    def project_points(self, xyzs, T=None):
+        if T is None:
+            rvec, tvec = np.zeros((3, 1)), np.zeros((3, 1))
+        else:
+            rvec, tvec = utils.T_to_r_t(T)
+        return cv2.projectPoints(xyzs, rvec, tvec, self.K, self.D)[0]
+
     def get_T_cam2_in_self(cam1, cam2):
         Ts = []
         keys = cam1.valid_keys_intersection(cam2)
