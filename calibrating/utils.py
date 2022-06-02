@@ -175,6 +175,23 @@ def vis_point_uvs(uvs, img_or_shape=None, size=None, color=None):
     return vis
 
 
+def vis_T(T, cam=None, img=None, length=0.1):
+    if cam is None:
+        from calibrating import Cam
+
+        cam = Cam.get_example_720p()
+    if img is None:
+        vis = np.ones(list(cam.xy[::-1]) + [3], np.uint8) * 128
+    else:
+        vis = img.copy()
+    rvec = cv2.Rodrigues(T[:3, :3])[0]
+    tvec = T[:3, 3:]
+    if not tvec.size:
+        tvec = np.zeros((3, 1))
+    cv2.aruco.drawAxis(vis, cam.K, cam.D, rvec, tvec, length)
+    return vis
+
+
 def vis_stereo(img1, img2, n_line=21, thickness=0.03):
     """
     Draw lines on stereo image pairs, two cases of horizontal rectify and vertical rectify.

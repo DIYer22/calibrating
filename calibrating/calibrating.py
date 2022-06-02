@@ -42,10 +42,14 @@ class MetaFeatureLib:
         return:
             vis: np.array(h, w, 3)
         """
+        vis = d["img"].copy()
+        if cam is not None and "T" in d:
+            vis = utils.vis_T(d["T"], cam, vis)
         image_points = d["image_points"]
         if isinstance(image_points, dict):
             image_points = np.concatenate(list(image_points.values()), 0)
-        return utils.vis_point_uvs(image_points, d["img"])
+        vis = utils.vis_point_uvs(image_points, vis)
+        return vis
 
 
 class CheckboardFeatureLib(MetaFeatureLib):
@@ -71,22 +75,24 @@ class CheckboardFeatureLib(MetaFeatureLib):
                 gray, corners, (4, 4), (-1, -1), criteria,
             )
             d["corners"] = corners
-            d["image_points"] = corners
+            d["image_points"] = corners[:, 0]
             d["object_points"] = self.object_points
 
     def vis(self, d, cam=None):
-        img = d["img"].copy() if "img" in d else boxx.imread(d["path"])
-        h, w = img.shape[:2]
+        vis = d["img"].copy() if "img" in d else boxx.imread(d["path"])
+        if cam is not None and "T" in d:
+            vis = utils.vis_T(d["T"], cam, vis)
+        h, w = vis.shape[:2]
         draw_subpix = h < 1500
         if draw_subpix:
             sub_size = 2
-            img = cv2.resize(img, (w * sub_size, h * sub_size))
+            vis = cv2.resize(vis, (w * sub_size, h * sub_size))
             cv2.drawChessboardCorners(
-                img, self.checkboard, d["corners"] * sub_size, True
+                vis, self.checkboard, d["corners"] * sub_size, True
             )
         else:
-            cv2.drawChessboardCorners(img, self.checkboard, d["corners"], True)
-        return img
+            cv2.drawChessboardCorners(vis, self.checkboard, d["corners"], True)
+        return vis
 
 
 class ArucoFeatureLib(MetaFeatureLib):
