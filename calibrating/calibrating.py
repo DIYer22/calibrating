@@ -376,7 +376,7 @@ class Cam(dict):
         else:
             dic = path_or_str_or_dict
         dic["K"] = intrinsic_format_conversion(dic)
-        dic["D"] = np.array(dic["D"])
+        dic["D"] = np.float64(dic["D"])
         dic["xy"] = tuple(dic["xy"])
         self.__dict__.update(dic)
         return self
@@ -453,6 +453,20 @@ class Cam(dict):
             enable_cache=True,
         )
         return caml, camr, camd
+
+    @classmethod
+    def get_example_720p(cls):
+        return cls.load(
+            dict(
+                fx=1000,
+                fy=1000,
+                cx=640,
+                cy=360,
+                D=np.zeros((1, 5)),
+                xy=(1280, 720),
+                name="example_720p",
+            )
+        )
 
 
 class Cams(list):
