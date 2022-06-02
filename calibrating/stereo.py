@@ -256,6 +256,26 @@ class Stereo:
     def get_max_depth(self):
         return getattr(self, "max_depth", self.MAX_DEPTH)
 
+    def get_calibration_board_T(self, img, feature_lib=None):
+        from calibrating import Cam
+
+        if feature_lib is None:
+            assert hasattr(self.cam1, "feature_lib"), "Please set feature_lib"
+            feature_lib = self.cam1.feature_lib
+        return Cam.get_calibration_board_T(self, img, feature_lib)
+
+    @property
+    def xy(self):
+        return self.cam1.xy
+
+    @property
+    def K(self):
+        return self.cam1.K
+
+    @property
+    def D(self):
+        return np.zeros((1, 5))
+
     @property
     def baseline(self):
         return np.sum(self.t ** 2) ** 0.5
@@ -349,6 +369,10 @@ class Stereo:
             rectify_depth
         The unit of depth is m
         """
+
+        assert hasattr(
+            self, "stereo_matching"
+        ), "Please stereo.set_stereo_matching(stereo_matching)"
         rectify_img1, rectify_img2 = self.rectify(img1, img2)
         if getattr(self, "translation_rectify_img"):
             rectify_img2[:, self.min_disparity :] = rectify_img2[
