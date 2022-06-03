@@ -6,6 +6,7 @@ Calibrate the internal and external parameters of cameras, rectify stereo camera
 
 ## ▮ Features
 - [High-level API](example/checkboard_example.py) that simplifies calibration steps
+- Object oriented Pythonic code style
 - Rich visualization to verify the calibration effect. e.g. [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
 - Very easy to install and run example
 - Mature [stereo module](calibrating/stereo.py) for correctly calculate the depth
