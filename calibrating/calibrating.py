@@ -213,6 +213,23 @@ class Cam(dict):
         depth_vis = np.uint8(cv2.applyColorMap(depth_uint8, cv2.COLORMAP_JET) * 0.75)
         return utils.vis_align(img, depth_vis)
 
+    def vis_image_points_cover(self):
+        # all_image_points = np.concatenate(self._get_points_for_cv2())
+        # vis = utils.vis_point_uvs(all_image_points, self.xy[::-1])
+        vis = self.xy[::-1]
+        for uvs in self._get_points_for_cv2():
+            vis = utils.vis_point_uvs(uvs, vis, convex_hull=True)
+
+        all_object_points = np.concatenate(self._get_points_for_cv2("object_points"))
+        object_points = np.unique(all_object_points, axis=0)
+        t_middle = np.mean(object_points, 0)
+        size_y = sorted(object_points.max(0) - object_points.min(0))[1]
+        for d in self.values():
+            if "T" in d:
+                T = d["T"] @ r_t_to_T(np.zeros((3,)), t_middle)
+                vis = utils.vis_T(T, self, vis, length=size_y / 2)
+        return vis
+
     def _get_points_for_cv2(self, name="image_points"):
         points = [self[key][name] for key in self.valid_keys]
         if isinstance(points[0], dict):
