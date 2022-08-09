@@ -6,6 +6,7 @@ from boxx import imread
 import os
 import cv2
 import yaml
+import copy
 import pickle
 import numpy as np
 from glob import glob
@@ -299,7 +300,7 @@ class Cam(dict):
                 with open(path_or_str) as f:
                     dic = yaml.safe_load(f)
         else:
-            dic = path_or_str_or_dict
+            dic = copy.deepcopy(path_or_str_or_dict)
         dic["K"] = intrinsic_format_conversion(dic)
         dic["D"] = np.float64(dic["D"])
         dic["xy"] = tuple(dic["xy"])
