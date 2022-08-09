@@ -58,9 +58,6 @@ class Cam(dict):
             d.pop("img")
             self[key] = d
 
-        self.valid_keys = set(
-            [key for key in self if len(self[key].get("image_points", {}))]
-        )
         self.image_points = self._get_points_for_cv2("image_points")
         self.object_points = self._get_points_for_cv2("object_points")
 
@@ -96,6 +93,10 @@ class Cam(dict):
                 vis = feature_lib.vis(d, self)
                 boxx.imsave(visdir + "/" + key + ".jpg", vis)
                 d.pop("img")
+
+    @property
+    def valid_keys(self):
+        return set([key for key in self if len(self[key].get("image_points", {}))])
 
     def _cache(self, do_cache=False):
         cache_path = TEMP + "/calibrating-cache-" + self.name + ".pkl"
