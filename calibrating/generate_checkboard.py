@@ -12,6 +12,13 @@ if __name__ == "__main__":
     n = 15
     ppi = 300  # pixels per inch (ppi)
 
+    # TODO 使用 aruco + checkboard
+    # MacBook Pro (Retina, 13 英寸, 2014 年中)
+    width = 2560
+    height = 1600
+    n = 12
+    ppi = 227  # pixels per inch (ppi)
+
     size = height // (n + 1)
     size_mm = round(size / ppi * 25.4, 2)
 
@@ -19,7 +26,8 @@ if __name__ == "__main__":
     wn = int((width - size) / size)
 
     # 长宽需要互为奇偶, 防止旋转对称导致的多个合法外参
-    wn -= 1 - (hn % 2)
+    if (wn % 2) == (hn % 2):
+        wn -= 1
 
     img = np.ones((height, width), dtype=np.uint8) * 255
     print(img.shape[0], img.shape[1])
