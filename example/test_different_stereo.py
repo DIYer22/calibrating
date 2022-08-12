@@ -3,8 +3,12 @@
 import cv2
 import boxx
 from boxx import os, glob, imread, np
-from calibrating import *
-from calibrating import Cam, SemiGlobalBlockMatching, Stereo, vis_depth, get_test_cams
+import calibrating
+from calibrating import Cam, SemiGlobalBlockMatching, Stereo, get_test_cams
+
+
+def vis_depth(d):
+    return calibrating.vis_depth(d, fix_range=(0, 3), slicen=10)
 
 
 if __name__ == "__main__":
@@ -14,10 +18,12 @@ if __name__ == "__main__":
     feature_type = "aruco"
     cams = get_test_cams(feature_type)
     caml, camr, camd = cams["caml"], cams["camr"], cams["camd"]
+    camd.load(relfile("../../calibrating_example_data/depth_camera_intric.yaml"))
 
     key = caml.valid_keys_intersection(camd)[0]
     imgl = imread(caml[key]["path"])
     imgr = imread(camr[key]["path"])
+    imgd = imread(camd[key]["path"])
     color_path_d = camd[key]["path"]
     depthd = imread(color_path_d.replace("color.", "depth.").replace(".jpg", ".png"))
     undistort_imgl = cv2.undistort(imgl, caml.K, caml.D)
@@ -34,20 +40,13 @@ if __name__ == "__main__":
     stereo2.T, stereo2.t = T[:3, :3], T[:3, 3:]
     stereo2._get_undistort_rectify_map()
 
-    stereo3 = Stereo(caml, camr, force_same_intrinsic=True)
-
     if "vis_stereo" and 1:
         visn = 1
         Cam.vis_stereo(caml, camr, stereo, visn)
         Cam.vis_stereo(caml, camr, stereo2, visn)
-        Cam.vis_stereo(caml, camr, stereo3, visn)
         print(
             "|stereo2.t - stereo.t|: %.2fmm"
             % (np.sum((stereo2.t - stereo.t) ** 2) ** 0.5 * 1000)
-        )
-        print(
-            "|stereo3.t - stereo.t|: %.2fmm"
-            % (np.sum((stereo3.t - stereo.t) ** 2) ** 0.5 * 1000)
         )
 
     stereo_matching = SemiGlobalBlockMatching({})
@@ -55,12 +54,10 @@ if __name__ == "__main__":
         s.set_stereo_matching(
             stereo_matching, max_depth=3, translation_rectify_img=True
         )
-        for s in [stereo, stereo2, stereo3,]
+        for s in [stereo, stereo2,]
     ]
 
-    depths = [
-        s.get_depth(imgl, imgr)["unrectify_depth"] for s in [stereo, stereo2, stereo3,]
-    ]
+    depths = [s.get_depth(imgl, imgr)["unrectify_depth"] for s in [stereo, stereo2,]]
 
     boxx.shows([undistort_imgl, list(map(vis_depth, [depthl] + depths))])
 
