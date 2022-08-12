@@ -312,6 +312,17 @@ class Cam(dict):
         new.load(self.dump())
         return new
 
+    def rotate(self, k=1):
+        # TODO rotate consider cam.D
+        # assert cam.dump()==cam.rotate(4).dump()
+        dic = self.dump(return_dict=True)
+        for idx in range(k):
+            dic["xy"] = dic["xy"][::-1]
+            dic["fx"], dic["fy"] = dic["fy"], dic["fx"]
+            dic["cx"], dic["cy"] = dic["xy"][0] - dic["cy"], dic["cx"]
+        new = type(self).load(dic)
+        return new
+
     @property
     def fx(self):
         return self.K[0, 0]

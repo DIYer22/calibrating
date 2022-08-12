@@ -28,6 +28,7 @@
     - 以 stereoCalibrate 为准
 
 ## TODO list
+- [ ] cam.rotate 考虑畸变
 - [ ] 更完善的代码文档, 尤其是 d 和 MetaFeatureLib
 - [ ] 自动测试用例
 - 和建冉沟通 calibrating 后
