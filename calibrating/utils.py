@@ -69,18 +69,21 @@ def depth_to_point_cloud(depth, K, interpolation_rate=1):
 def point_cloud_to_depth(points, K, xy):
     xyzs = (K @ points.T).T
     xyzs[:, :2] /= xyzs[:, 2:]
-
-    xyzs = np.array(sorted(xyzs, key=lambda xyz: -xyz[2]))
+    sorted_idx = np.argsort(-xyzs[:, 2])
+    xyzs = xyzs[sorted_idx]
     return xyzs_to_arr2d(xyzs, xy[::-1])
 
 
-def xyzs_to_arr2d(xyzs, hw=None, bg_value=0):
-    if hw is None:
-        hw = np.int32(xyzs.max(0)[:2].round()) + 1
+def xyzs_to_arr2d(xyzs, hw=None, bg_value=0, arr2d=None):
+    if arr2d is None:
+        if hw is None:
+            hw = np.int32(xyzs.max(0)[:2].round()) + 1
+        arr2d = np.ones(hw, xyzs.dtype) * bg_value
+    else:
+        hw = arr2d.shape[:2]
 
     xs, ys = np.int32(xyzs[:, :2].round()).T
     mask = (xs >= 0) & (xs < hw[1]) & (ys >= 0) & (ys < hw[0])
-    arr2d = np.ones(hw, xyzs.dtype) * bg_value
     arr2d[ys[mask], xs[mask]] = xyzs[:, 2][mask]
     return arr2d
 

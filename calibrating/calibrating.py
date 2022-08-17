@@ -199,7 +199,8 @@ class Cam(dict):
             T = cam1.get_T_cam2_in_self(cam2)
         if interpolation:
             interpolation_rate = cam1.K[0, 0] / cam2.K[0, 0] * interpolation
-            interpolation_rate = max(interpolation_rate, 1)
+            if interpolation >= 1:
+                interpolation_rate = max(interpolation_rate, 1)
         else:
             interpolation_rate = 1
         point_cloud2 = utils.depth_to_point_cloud(
