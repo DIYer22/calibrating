@@ -458,11 +458,12 @@ class SemiGlobalBlockMatching(MetaStereoMatching):
     def __call__(self, img1, img2):
         resize_ratio = min(self.max_size / max(img1.shape[:2]), 1)
         simg1, simg2 = boxx.resize(img1, resize_ratio), boxx.resize(img2, resize_ratio)
-        sdisparity = (self.stereo_sgbm.compute(simg1, simg2).astype(np.float32)).clip(
-            0
-        ) / 16.0
+        sdisparity = (self.stereo_sgbm.compute(simg1, simg2).astype(np.float32)).clip(0)
+        sdisparity[sdisparity < self.stereo_sgbm.getMinDisparity() * 16] = 0
         disparity = (
-            boxx.resize(sdisparity, img1.shape[:2]) * img1.shape[1] / simg1.shape[1]
+            boxx.resize(sdisparity / 16.0, img1.shape[:2])
+            * img1.shape[1]
+            / simg1.shape[1]
         )
         return disparity
 
