@@ -39,6 +39,30 @@ def apply_T_to_point_cloud(T, point_cloud):
     return (T @ new_point_cloud.T).T[:, :3]
 
 
+def rotate_depth_by_point_cloud(K, R, depth, interpolation_rate=1):
+    pc = depth_to_point_cloud(depth, K, interpolation_rate=interpolation_rate)
+    T = np.eye(4)
+    T[:3, :3] = R
+    new_pc = apply_T_to_point_cloud(T, pc)
+    new_depth = point_cloud_to_depth(new_pc, K, depth.shape[::-1])
+    return dict(depth=new_depth, R=R)
+
+
+def rotate_depth_by_remap(K, R, depth, maps=None):
+    y, x = depth.shape
+    if maps is None:
+        maps = cv2.initUndistortRectifyMap(K, None, R, K, (x, y), cv2.CV_32FC1,)
+    ys, xs = np.mgrid[:y, :x]
+    ys, xs = ys.flatten(), xs.flatten()
+    points = np.array([xs, ys, np.ones_like(xs)]) * depth.flatten()[None]
+    # points.shape is (3, n)
+    new_points = (R @ np.linalg.inv(K) @ points).T
+    new_depth_on_old_xy = new_points[:, 2].reshape(y, x)
+
+    new_depth = cv2.remap(new_depth_on_old_xy, maps[0], maps[1], cv2.INTER_NEAREST)
+    return dict(depth=new_depth, R=R, maps=maps)
+
+
 def depth_to_point_cloud(depth, K, interpolation_rate=1):
     # depth to point cloud
     # K@Ps/z=xy

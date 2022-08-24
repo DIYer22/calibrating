@@ -31,14 +31,14 @@
 - [ ] cam.rotate 考虑畸变
 - [ ] 更完善的代码文档, 尤其是 d 和 MetaFeatureLib
 - [ ] 自动测试用例
+## Done
 - 和建冉沟通 calibrating 后
     - 目的: 抽象出来并共用 Cam 模型
     - [ ] 去掉 boxx 强依赖
-    - [ ] 新增feature: chekboard + marker
-    - [ ] 兼容 py3.6
+    - [x] 新增feature: chekboard + marker
+    - [x] 兼容 py3.6
     - [x] cam 支持预定义内参 K, D
     - [x] dumap and load yaml of KD
-## Done
 - [x] support Occlusion for external parameters(支持被遮挡的 marker)
 - [x] `aruco` 的 `caml.vis_project_align(imgl, depthl)` 存在轻微没对齐
     - 结论: 本来 depthd 在标定板边缘就有深度缺失

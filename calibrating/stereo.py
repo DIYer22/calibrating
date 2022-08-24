@@ -292,17 +292,12 @@ class Stereo:
         return depth
 
     def unrectify_depth(self, depth):
-        maps = cv2.initUndistortRectifyMap(
-            self.cam1.K,
-            None,
-            np.linalg.inv(self.R1),
-            self.cam1.K,
-            self.cam1.xy,
-            cv2.CV_32FC1,
-        )
-
-        ir = cv2.remap(depth, maps[0], maps[1], cv2.INTER_NEAREST)
-        return ir
+        maps = getattr(self, "_unrectify_depth_maps", None)
+        re = utils.rotate_depth_by_remap(self.cam1.K, self.R1.T, depth, maps=maps)
+        if maps is None:
+            self._unrectify_depth_maps = re["maps"]
+        rotated_depth = re["depth"]
+        return rotated_depth
 
     def undistort_img(self, img1):
         return cv2.undistort(img1, self.cam1.K, self.cam1.D)

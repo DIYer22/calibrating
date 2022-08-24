@@ -8,8 +8,9 @@ from calibrating import Cam, SemiGlobalBlockMatching, vis_depth, get_test_cams, 
 import calibrating
 
 
-class Stereo(calibrating.Stereo):
+class StereoDifferentK(calibrating.Stereo):
     pass
+    # different K
 
     def _get_undistort_rectify_map(self):
         self.big_fov_cam = (
@@ -49,6 +50,15 @@ class FeatureMatching(calibrating.MetaStereoMatching):
         self.feature_lib.find_image_points(d2)
         image_points2 = d2["image_points"]
 
+        if isinstance(image_points1, dict):
+            image_points1 = []
+            image_points2 = []
+            for key in sorted(set(d1["image_points"]).intersection(d2["image_points"])):
+                image_points1.append(d1["image_points"][key])
+                image_points2.append(d2["image_points"][key])
+            image_points1 = np.concatenate(image_points1, 0)
+            image_points2 = np.concatenate(image_points2, 0)
+
         rectify_std = np.std((image_points2 - image_points1)[:, 1])
         point_disps = (image_points1 - image_points2)[:, 0]
         xyds = np.append(image_points1, point_disps[:, None], axis=-1)
@@ -59,7 +69,7 @@ class FeatureMatching(calibrating.MetaStereoMatching):
 def sparse_to_points(sparse):
     y, x = sparse.shape
     ys, xs = np.mgrid[:y, :x]
-    mask = sparse != 0
+    mask = (sparse != 0) & np.isfinite(sparse)
     points = np.array([xs[mask], ys[mask], sparse[mask]]).T
     return points
 
@@ -91,7 +101,7 @@ def dense_2d(sparse, constrained_type=None):
     else:
         fit_xys = sparse_to_points(~mask)
     fit_xyzs = fit(points, fit_xys)
-    dense = utils.xyzs_to_arr2d(fit_xyzs, sparse.shape)
+    dense = utils.xyzs_to_arr2d(fit_xyzs, sparse.shape, arr2d=sparse)
     return dense
 
 
@@ -101,32 +111,80 @@ if __name__ == "__main__":
     feature_type = "checkboard"
     feature_type = "aruco"
     is_dense = True
+    vis_depth1 = lambda d: vis_depth(d, fix_range=(0, 3.5), slicen=30)
 
     cams = get_test_cams(feature_type)
     caml, camr, camd = cams["caml"], cams["camr"], cams["camd"]
     feature_lib = caml.feature_lib
-    caml, camr = camd, camr
+    # caml, camr = camd, camr
 
-    key = caml.valid_keys_intersection(camd)[0]
+    key = caml.valid_keys_intersection(camd)[2]
     imgl = imread(caml[key]["path"])
     imgr = imread(camr[key]["path"])
     color_path_d = camd[key]["path"]
     depthd = imread(color_path_d.replace("color.", "depth.").replace(".jpg", ".png"))
+    depthd = np.float32(depthd / 1000)
     undistort_imgl = cv2.undistort(imgl, caml.K, caml.D)
     stereo = Stereo(caml, camr)
-    Cam.vis_stereo(caml, camr, stereo)
+    # Cam.vis_stereo(caml, camr, stereo)
+
+    if "test unrectify depth" and 0:
+        depth = depthd
+        T = np.eye(4)
+        r = np.ones(3) * np.pi / 180 * 5
+        r[1] = 0
+        # r = npa([0, 0, np.pi/180*90])
+        R = cv2.Rodrigues(r.squeeze())[0]
+        cam = camd
+        K = cam.K
+
+        maps = cv2.initUndistortRectifyMap(K, None, R, K, cam.xy, cv2.CV_32FC1,)
+        with timeit():
+            T[:3, :3] = R
+            depthd_rotated_pc = Cam.project_cam2_depth(
+                camd, camd, depthd, T, interpolation=1
+            )
+        with timeit():
+
+            y, x = depth.shape
+            ys, xs = np.mgrid[:y, :x]
+            ys, xs = ys.flatten(), xs.flatten()
+            points = np.array([xs, ys, np.ones_like(xs)]) * depth.flatten()[None]
+            new_points = (R @ np.linalg.inv(K) @ points).T
+            new_depth_on_old_xy = new_points[:, 2].reshape(y, x)
+
+            depthd_rotated = cv2.remap(
+                new_depth_on_old_xy, maps[0], maps[1], cv2.INTER_NEAREST
+            )
+
+        shows(
+            ll
+            - map(
+                vis_depth1,
+                [
+                    cv2.remap(depth, maps[0], maps[1], cv2.INTER_NEAREST),
+                    depthd_rotated,
+                    depthd_rotated_pc,
+                    rotate_depth_by_point_cloud(cam.K, R, depth)["depth"],
+                    rotate_depth_by_remap(cam.K, R, depth)["depth"],
+                ],
+            )
+        )  # , depthd_rotated- depthd_rotated_pc)
+        1 / 0
 
     # get depth_board by chboard T
     T_board = caml[key]["T"]
-    xyz_in_caml = utils.apply_T_to_point_cloud(T_board, feature_lib.object_points)
+    object_points = caml[key]["object_points"]
+    if isinstance(object_points, dict):
+        object_points = np.concatenate(list(caml[key]["object_points"].values()), 0)
+    xyz_in_caml = utils.apply_T_to_point_cloud(T_board, object_points)
     depth_board = sparse_board = utils.point_cloud_to_depth(
         xyz_in_caml, caml.K, caml.xy
     )
     if is_dense:
-        depth_board = dense_2d(sparse_board, "convex_hull")
+        depth_board = 1 / dense_2d(1 / sparse_board, "convex_hull")
 
     # get depthl by depthd
-    depthd = np.float32(depthd / 1000)
     T_camd_in_caml = caml.get_T_cam2_in_self(camd)
     with boxx.timeit("project_cam2_depth"):
         depthl = caml.project_cam2_depth(camd, depthd, T_camd_in_caml)
@@ -134,28 +192,30 @@ if __name__ == "__main__":
     stereo2 = Stereo.load(stereo.dump(return_dict=1))
     T = camr.get_T_cam2_in_self(caml)
     stereo2.T, stereo2.t = T[:3, :3], T[:3, 3:]
-    stereo2._get_undistort_rectify_map()
+    # stereo2._get_undistort_rectify_map()
 
     # get depth_fm by FeatureMatching
     feature_matching = FeatureMatching(feature_lib, False)
     stereo.set_stereo_matching(
         feature_matching, max_depth=3, translation_rectify_img=True
     )
-    depth_fm = sparse_fm = stereo.get_depth(imgl, imgr)["unrectify_depth"]
+    re_fm = stereo.get_depth(imgl, imgr)
+    depth_fm = sparse_fm = re_fm["unrectify_depth"]
     if is_dense:
-        depth_fm = dense_2d(sparse_fm, "convex_hull")
+        depth_fm = 1 / dense_2d(1 / sparse_fm, "convex_hull")
 
     # get depth_sgbm by sgbm
     sgbm = SemiGlobalBlockMatching({})
     stereo.set_stereo_matching(sgbm, max_depth=3, translation_rectify_img=True)
-    depth_sgbm = stereo.get_depth(imgl, imgr)["unrectify_depth"]
+    re_sgbm = stereo.get_depth(imgl, imgr)
+    depth_sgbm = re_sgbm["unrectify_depth"]
 
     depths = [depthl, depth_board, depth_fm, depth_sgbm]
-    boxx.shows([undistort_imgl, list(map(vis_depth, depths))])
+    boxx.shows([undistort_imgl, [vis_depth1(d) for d in depths]])
 
     se = boxx.sliceInt[500:1000, 1600:2200]
     sds = list(map(lambda d: d[se], depths))
-    boxx.show(undistort_imgl[se], list(map(vis_depth, sds)))
+    boxx.show(undistort_imgl[se], list(map(vis_depth1, sds)))
     print_value = lambda d: (1000 * d[se][y : y + 10, x : x + 10].mean()).round(2)
     y, x = 0, 0
     print("mm", list(map(print_value, depths)))
