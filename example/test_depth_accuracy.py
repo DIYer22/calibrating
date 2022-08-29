@@ -2,10 +2,18 @@
 
 import cv2
 import boxx
-from boxx import os, glob, imread, np
-from calibrating import *
-from calibrating import Cam, SemiGlobalBlockMatching, vis_depth, get_test_cams, utils
-import calibrating
+from boxx import imread, np
+
+with boxx.impt(".."):
+    from calibrating import *
+    from calibrating import (
+        Cam,
+        SemiGlobalBlockMatching,
+        vis_depth,
+        get_test_cams,
+        utils,
+    )
+    import calibrating
 
 
 class StereoDifferentK(calibrating.Stereo):
@@ -127,50 +135,6 @@ if __name__ == "__main__":
     undistort_imgl = cv2.undistort(imgl, caml.K, caml.D)
     stereo = Stereo(caml, camr)
     # Cam.vis_stereo(caml, camr, stereo)
-
-    if "test unrectify depth" and 0:
-        depth = depthd
-        T = np.eye(4)
-        r = np.ones(3) * np.pi / 180 * 5
-        r[1] = 0
-        # r = npa([0, 0, np.pi/180*90])
-        R = cv2.Rodrigues(r.squeeze())[0]
-        cam = camd
-        K = cam.K
-
-        maps = cv2.initUndistortRectifyMap(K, None, R, K, cam.xy, cv2.CV_32FC1,)
-        with timeit():
-            T[:3, :3] = R
-            depthd_rotated_pc = Cam.project_cam2_depth(
-                camd, camd, depthd, T, interpolation=1
-            )
-        with timeit():
-
-            y, x = depth.shape
-            ys, xs = np.mgrid[:y, :x]
-            ys, xs = ys.flatten(), xs.flatten()
-            points = np.array([xs, ys, np.ones_like(xs)]) * depth.flatten()[None]
-            new_points = (R @ np.linalg.inv(K) @ points).T
-            new_depth_on_old_xy = new_points[:, 2].reshape(y, x)
-
-            depthd_rotated = cv2.remap(
-                new_depth_on_old_xy, maps[0], maps[1], cv2.INTER_NEAREST
-            )
-
-        shows(
-            ll
-            - map(
-                vis_depth1,
-                [
-                    cv2.remap(depth, maps[0], maps[1], cv2.INTER_NEAREST),
-                    depthd_rotated,
-                    depthd_rotated_pc,
-                    rotate_depth_by_point_cloud(cam.K, R, depth)["depth"],
-                    rotate_depth_by_remap(cam.K, R, depth)["depth"],
-                ],
-            )
-        )  # , depthd_rotated- depthd_rotated_pc)
-        1 / 0
 
     # get depth_board by chboard T
     T_board = caml[key]["T"]

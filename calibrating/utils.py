@@ -239,7 +239,7 @@ def vis_T(T, cam=None, img=None, length=0.1):
     else:
         vis = img.copy()
     rvec, tvec = T_to_r_t(T)
-    cv2.aruco.drawAxis(vis, cam.K, cam.D, rvec, tvec, length)
+    cv2.drawFrameAxes(vis, cam.K, cam.D, rvec, tvec, length)
     return vis
 
 

@@ -5,21 +5,23 @@ Calibrate the internal and external parameters of cameras, rectify stereo camera
 <!-- ![stereo](https://user-images.githubusercontent.com/10448025/131805868-e73cd022-d79b-400c-b057-c26915f92c7c.jpg) -->
 
 ## ▮ Features
-- [High-level API](example/checkboard_example.py) that simplifies calibration steps
+- High-level API that simplifies calibration steps
 - Object oriented Pythonic code style
 - Rich visualization to verify the calibration effect. e.g. [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
-- Very easy to install and run example
+- Very easy to install and run example with [example images](https://github.com/yl-data/calibrating_example_data)
 - Mature [stereo module](calibrating/stereo.py) for correctly calculate the depth
-- Decoupling the feature extraction and calibration process, support both checkboard and markers(`cv2.aruco`)
 - Provide camera internal and external parameters standard, which can be exported as `.yaml`
-- Support for [occluded marker](example/test_occlude_marker.py)
-- Automatically ignore non-compliant images
+- Decoupling the feature extraction and calibration process, support both checkboard and markers(`cv2.aruco`)
+- Support [occluded marker](example/test_occlude_marker.py) like [ArUco](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html) and [ChArUco](https://docs.opencv.org/4.6.0/df/d4a/tutorial_charuco_detection.html)
+- Draw various calibration board images
+- Automatically ignore non-compliant images or markers
+
 ## ▮ Install
 ```bash
 pip3 install calibrating
 ```
 ## ▮ Run Example
-Example images are captured by paired_stereo_and_depth_cams:   
+[Example images](https://github.com/yl-data/calibrating_example_data) are captured by paired_stereo_and_depth_cams:   
 [![paired_stereo_and_depth_cams_1](https://user-images.githubusercontent.com/10448025/131831496-7a38c677-a578-4a4e-a01e-aa102dad9dbc.jpg)](https://github.com/yl-data/calibrating_example_data/raw/master/paired_stereo_and_depth_cams.jpg?raw=true)
 
 ```bash
