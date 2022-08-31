@@ -96,7 +96,7 @@ class Stereo:
             100,
             1e-5,
         )
-        ret, _, _, _, _, self.R, self.t, E, F = cv2.stereoCalibrate(
+        retval, _, _, _, _, self.R, self.t, E, F = cv2.stereoCalibrate(
             conjoint_object_points,
             conjoint_image_points1,
             conjoint_image_points2,
@@ -105,10 +105,10 @@ class Stereo:
             self.cam2.K,
             self.cam2.D,
             self.cam1.xy,
-            criteria=stereocalib_criteria,
             flags=flags,
+            criteria=stereocalib_criteria,
         )
-        self.ret = ret
+        self.retval = retval
 
     def _get_undistort_rectify_map(self):
         xy = self.cam1.xy
@@ -137,7 +137,7 @@ class Stereo:
         )
         return [rectified1, rectified2]
 
-    DUMP_ATTRS = ["R", "t"]
+    DUMP_ATTRS = ["R", "t", "retval"]
 
     def dump(self, path="", return_dict=False):
 
@@ -266,7 +266,9 @@ class Stereo:
                 " ".join([str(i) for i in r.round(3)]),
                 du,
             )
-            strr += "\t cam1.fovs: %s" % str(utils._str_angle_dic(self.cam1.fovs))
+            strr += "\t cam1.fovs: %s\n" % str(utils._str_angle_dic(self.cam1.fovs))
+            if hasattr(self, "retval"):
+                strr += "\t retval: %s\n" % self.retval
         except Exception as e:
             strr += f"\t Exception({e}) in Stereo.__str__()"
         return strr

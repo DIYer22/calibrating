@@ -130,6 +130,33 @@ class CheckboardFeatureLib(MetaFeatureLib):
         return self
 
 
+def get_aruco_dictionary_with_start(aruco_dict_tag):
+    """
+    Parameters
+    ----------
+    aruco_dict_tag : int, str
+        e.g. DICT_4X4_250_start50 will start 50 from DICT_4X4_250
+
+    Returns
+    -------
+    aruco_dictionary
+    """
+    aruco_dict_tag_key = aruco_dict_tag_int = aruco_dict_tag
+    start_idx = 0
+    if isinstance(aruco_dict_tag, str):
+        START_PREFIX = "_start"
+        if START_PREFIX in aruco_dict_tag:
+            split_idx = aruco_dict_tag.index(START_PREFIX)
+            start_idx = int(aruco_dict_tag[split_idx + len(START_PREFIX) :])
+            aruco_dict_tag_key = aruco_dict_tag[:split_idx]
+        aruco_dict_tag_int = getattr(cv2.aruco, aruco_dict_tag_key)
+    aruco_dictionary = cv2.aruco.getPredefinedDictionary(aruco_dict_tag_int)
+    if start_idx:
+        # aruco_dictionary.bytesList = np.append(aruco_dictionary.bytesList[start_idx:], aruco_dictionary.bytesList[:start_idx], 0)
+        aruco_dictionary.bytesList = aruco_dictionary.bytesList[start_idx:]
+    return aruco_dictionary
+
+
 class ArucoFeatureLib(MetaFeatureLib):
     def __init__(self, occlusion=False, detector_parameters=None):
         import cv2.aruco
@@ -194,11 +221,12 @@ class CharucoFeatureLib(MetaFeatureLib):
         marker_size_mm=22.475,
         aruco_dict_tag=None,
     ):
+        self.square_xy = square_xy
         if aruco_dict_tag is None:
             aruco_dict_tag = cv2.aruco.DICT_4X4_250
 
         self.aruco_dict_tag = aruco_dict_tag
-        self.aruco_dictionary = cv2.aruco.getPredefinedDictionary(aruco_dict_tag)
+        self.aruco_dictionary = get_aruco_dictionary_with_start(aruco_dict_tag)
         self.board = cv2.aruco.CharucoBoard_create(
             square_xy[0],
             square_xy[1],
@@ -275,7 +303,9 @@ class CharucoFeatureLib(MetaFeatureLib):
 if __name__ == "__main__":
     from boxx import *
 
-    feature_lib = CharucoFeatureLib.build_with_calibration_img()
+    feature_lib = CharucoFeatureLib.build_with_calibration_img(
+        aruco_dict_tag="DICT_4X4_250_start50"
+    )
     calibration_img = img = feature_lib.calibration_img
     # clip to 100 for printer to use less black ink
     boxx.imsave(f"/tmp/{feature_lib.calibration_img_name}", calibration_img.clip(100,))
