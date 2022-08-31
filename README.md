@@ -1,18 +1,19 @@
 # `calibrating`: A Python Library for Camera Calibration
-Calibrate the internal and external parameters of cameras, rectify stereo cameras by OpenCV python.
+Calibrate camera's intrinsic/extristric, and build stereo depth camera with OpenCV python.
 
 [![stereo-checkboard](https://user-images.githubusercontent.com/10448025/131808105-a325961e-5fbb-4475-adcd-ba0e2c53e268.png)](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html)
 <!-- ![stereo](https://user-images.githubusercontent.com/10448025/131805868-e73cd022-d79b-400c-b057-c26915f92c7c.jpg) -->
+![depth](https://user-images.githubusercontent.com/10448025/187621537-b18bc53b-fba2-4269-adb5-a97e4c3da923.jpg)
 
 ## ▮ Features
 - High-level API that simplifies calibration steps
-- Object oriented Pythonic code style
+- Object-oriented Pythonic code style
 - Rich visualization to verify the calibration effect. e.g. [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
-- Very easy to install and run example with [example images](https://github.com/yl-data/calibrating_example_data)
-- Mature [stereo module](calibrating/stereo.py) for correctly calculate the depth
+- Very easy to install and run the example with [example images](https://github.com/yl-data/calibrating_example_data)
+- Mature [stereo module](calibrating/stereo.py) for correctly converting disparity to depth map that aligned with the left camera
 - Provide camera internal and external parameters standard, which can be exported as `.yaml`
 - Decoupling the feature extraction and calibration process, support both checkboard and markers(`cv2.aruco`)
-- Support [occluded marker](example/test_occlude_marker.py) like [ArUco](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html) and [ChArUco](https://docs.opencv.org/4.6.0/df/d4a/tutorial_charuco_detection.html)
+- Support [occluded markers](example/test_occlude_marker.py) like [ArUco](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html) and [ChArUco](https://docs.opencv.org/4.6.0/df/d4a/tutorial_charuco_detection.html)
 - Draw various calibration board images
 - Automatically ignore non-compliant images or markers
 
@@ -43,7 +44,7 @@ Or Chinese Version: [example/checkboard_example_cn.py (中文注释)](example/ch
 
 ## ▮ Stereo
 
-Run [stereo example](calibrating/stereo.py):
+**Run [stereo example](calibrating/stereo.py):**
 ```bash
 python3 calibrating/calibrating/stereo.py
 ```
@@ -51,19 +52,27 @@ After a while, your browser will open:
 - [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html)
 - [StereoSGBM-depth-vis](https://yl-data.github.io/2108.calibrating-vis/stereo_sgbm_vis/): Which shows `undistort_img1`, `unrectify_depth`. The example disparity is computed by `cv2.StereoSGBM`.
 
+**Another stereo depth example:**
+```
+python3 calibrating/example/test_depth_accuracy.py
+```
+your browser will pop up a visual web page like this  
+![depth](https://user-images.githubusercontent.com/10448025/187621537-b18bc53b-fba2-4269-adb5-a97e4c3da923.jpg)
+
+
 **[Mermaid](https://mermaid.live/) flowchart of `calbrating.Stereo.get_depth(img1, img2)`**
 ```mermaid
 flowchart 
     subgraph "Stereo.get_depth(img1, img2)"
-        input(input:　\nimg1\nimg2)--> undistort
+        input(Input:　\nimg1\nimg2)--> undistort
         undistort-->rectify
         undistort --> stereo_re
         subgraph StereoMatching
         end
         rectify --> StereoMatching
-        StereoMatching --> disparity_to_depth
-        disparity_to_depth --> unrectify
-        unrectify --> stereo_re("output:　　　　\nrectify_img1\nrectify_depth")
+        StereoMatching --disparity--> disp_to_depth
+        disp_to_depth --depth--> unrectify
+        unrectify --> stereo_re("Output:　　　　\n undistort_img1 \n unrectify_depth")
     end
 ```
 
