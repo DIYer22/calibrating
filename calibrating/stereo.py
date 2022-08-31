@@ -171,14 +171,24 @@ class Stereo:
                 with open(path_or_str) as f:
                     dic = yaml.safe_load(f)
         else:
-            dic = path_or_str_or_dict
+            dic = dict(path_or_str_or_dict)
+
+        if hasattr(self, "cam1"):
+            self.cam1.load(dic.pop("cam1"))
+            self.cam2.load(dic.pop("cam2"))
+        else:
+            self.cam1 = Cam.load(dic.pop("cam1"))
+            self.cam2 = Cam.load(dic.pop("cam2"))
         self.__dict__.update(
             {k: np.array(v) if k in self.DUMP_ATTRS else v for k, v in dic.items()}
         )
-        self.cam1 = Cam.load(self.cam1)
-        self.cam2 = Cam.load(self.cam2)
         self._get_undistort_rectify_map()
         return self
+
+    def copy(self):
+        new = type(self)()
+        new.load(self.dump())
+        return new
 
     @staticmethod
     def _get_img(path_or_np):
@@ -243,10 +253,22 @@ class Stereo:
         )
 
     def __str__(self):
-        strr = "Stereo:\n"
-        strr += "\tBaseline: %.2fcm\n" % (100 * self.baseline)
-        strr += "\tcam1.xy: %s\n" % str(self.cam1.xy)
-        strr += "\tcam1.fovs: %s" % str(utils._str_angle_dic(self.cam1.fovs))
+        r = utils.T_to_r(self.R).squeeze()
+        du = np.linalg.norm(r) * 180 / np.pi
+        try:
+            strr = "Stereo:\n"
+            strr += "\t xy: %s\n" % str(list(self.cam1.xy))[1:-1]
+            strr += "\t baseline: %.2fcm\n" % (100 * self.baseline)
+            strr += "\t t(cm): [%s]\n" % (
+                " ".join([str(i) for i in (self.t.squeeze() * 100).round(2)])
+            )
+            strr += "\t r(rodrigues): [%s] %.2f°\n" % (
+                " ".join([str(i) for i in r.round(3)]),
+                du,
+            )
+            strr += "\t cam1.fovs: %s" % str(utils._str_angle_dic(self.cam1.fovs))
+        except Exception as e:
+            strr += f"\t Exception({e}) in Stereo.__str__()"
         return strr
 
     __repr__ = __str__

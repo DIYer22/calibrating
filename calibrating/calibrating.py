@@ -33,37 +33,38 @@ class Cam(dict):
         enable_cache=False,
     ):
         super().__init__()
+        self.img_paths = img_paths
+        self.feature_lib = feature_lib
+        self.save_feature_vis = save_feature_vis
+        self.name = name or ("cam" + str(boxx.increase("caibrating.cam-name")))
+        self.undistorted = undistorted
+        self.enable_cache = enable_cache
+
         if img_paths is None:
             return
+        # papre name to dict for calibrate
         assert len(img_paths), img_paths
         assert len(img_paths) == len(set(img_paths))
-        self.feature_lib = feature_lib
         if isinstance(img_paths, (list, tuple)):
             left_idx, right_idx = self.get_key_idx(img_paths)
             img_paths = {path[left_idx:right_idx]: path for path in sorted(img_paths)}
-
         self.img_paths = img_paths
-        self.name = name or ("cam" + str(boxx.increase("caibrating.cam-name")))
-
-        self.enable_cache = enable_cache
         if self._cache():
             return
         for key in tqdm(sorted(img_paths)):
             path = img_paths[key]
-            d = {}
-            d["path"] = path
-
-            img = boxx.imread(path)
-            d["img"] = self.process_img(img)
+            d = dict(path=path, img=self.process_img(imread(path)))
             feature_lib.find_image_points(d)
             d.pop("img")
             self[key] = d
+        self.calibrate()
 
-        self.image_points = self._get_points_for_cv2("image_points")
+    def calibrate(self):
+        self.set_xy()
         self.object_points = self._get_points_for_cv2("object_points")
-
+        self.image_points = self._get_points_for_cv2("image_points")
         flags = 0
-        if undistorted:
+        if self.undistorted:
             flags = cv2.CALIB_ZERO_TANGENT_DIST + sum(
                 [
                     cv2.CALIB_FIX_K1,
@@ -83,15 +84,15 @@ class Cam(dict):
             d = self[key]
             d["T"] = r_t_to_T(rvecs[idx], tvecs[idx])
 
-        self._cache(do_cache=True)
-        if save_feature_vis:
+        self._cache(do_cache=self.enable_cache)
+        if self.save_feature_vis:
             visdir = TEMP + "/calibrating-vis-" + self.name
             print("\nSave visualization of feature points in dir:", visdir)
             os.makedirs(visdir, exist_ok=True)
             for key in tqdm(self.valid_keys):
                 d = self[key]
                 d["img"] = self.process_img(imread(d["path"]))
-                vis = feature_lib.vis(d, self)
+                vis = d.get("feature_lib", self.feature_lib).vis(d, self)
                 boxx.imsave(visdir + "/" + key + ".jpg", vis)
                 d.pop("img")
 
@@ -126,16 +127,21 @@ class Cam(dict):
         rotate90 img if xy != self.xy
         """
         xy = img.shape[1], img.shape[0]
-        if not hasattr(self, "xy"):
-            self.xy = xy
+        self.set_xy(img)
+        if xy == self.xy:
+            pass
+        elif xy[::-1] == self.xy:
+            img = np.ascontiguousarray(np.rot90(img))
         else:
-            if xy == self.xy:
-                pass
-            elif xy[::-1] == self.xy:
-                img = np.ascontiguousarray(np.rot90(img))
-            else:
-                assert set(xy) == set(self.xy), f"{xy} != {self.xy}"
+            assert set(xy) == set(self.xy), f"{xy} != {self.xy}"
         return img
+
+    def set_xy(self, img=None):
+        if not hasattr(self, "xy"):
+            if img is None:
+                img = imread(next(iter(self.values()))["path"])
+            self.xy = img.shape[1], img.shape[0]
+        return self.xy
 
     def stereo_with(caml, camr):
         return Stereo(caml, camr)
@@ -303,6 +309,7 @@ class Cam(dict):
         else:
             dic = copy.deepcopy(path_or_str_or_dict)
         dic["K"] = intrinsic_format_conversion(dic)
+        [dic.pop(k) for k in ("fx", "fy", "cx", "cy")]
         dic["D"] = np.float64(dic["D"])
         dic["xy"] = tuple(dic["xy"])
         self.__dict__.update(dic)
@@ -349,19 +356,10 @@ class Cam(dict):
         )
         return dict(fov=fov, fovx=fovx, fovy=fovy)
 
-    @classmethod
-    def init_by_K_D(cls, K, D, xy, name=None):
-        self = cls()
-        self.name = name or ("cam" + str(boxx.increase("caibrating.cam-name")))
-        self.K = K
-        self.D = D
-        self.xy = xy
-        return self
-
     @staticmethod
     def get_key_idx(paths):
         if len(paths) <= 1:
-            return 0, 1
+            return -3, None
         left_idx = 0
         while all([paths[0][left_idx] == path[left_idx] for path in paths]):
             left_idx += 1
@@ -413,6 +411,31 @@ class Cam(dict):
                 name="example_720p",
             )
         )
+
+    @classmethod
+    def init_by_K_D(cls, K, D, xy, name=None):
+        self = cls()
+        self.name = name or ("cam" + str(boxx.increase("caibrating.cam-name")))
+        self.K = K
+        self.D = D
+        self.xy = xy
+        return self
+
+    @classmethod
+    def build_with_multi_feature_libs(cls, imgps, feature_libs, **kwargs):
+        self = cls(**kwargs)
+        if not isinstance(feature_libs, dict):
+            feature_libs = dict([(str(i), v) for i, v in enumerate(feature_libs)])
+        kwargs["save_feature_vis"] = False
+        for name in feature_libs:
+            kwargs["name"] = self.name + "~cam_~" + name
+            feature_lib = feature_libs[name]
+            cam_ = cls(imgps, feature_lib=feature_lib, **kwargs)
+            for k in cam_:
+                cam_[k]["feature_lib"] = feature_lib
+                self[k + "~" + name] = cam_[k]
+        self.calibrate()
+        return self
 
 
 class Cams(list):
