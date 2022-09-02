@@ -61,6 +61,7 @@ class Cam(dict):
 
     def calibrate(self):
         self.set_xy()
+        assert len(self.valid_keys), "No any valid image!"
         self.object_points = self._get_points_for_cv2("object_points")
         self.image_points = self._get_points_for_cv2("image_points")
         flags = 0
@@ -75,9 +76,10 @@ class Cam(dict):
                     cv2.CALIB_FIX_K6,
                 ]
             )
-
+        init_K, init_D = None, None
+        # flags=cv2.CALIB_FIX_ASPECT_RATIO#+cv2.CALIB_FIX_PRINCIPAL_POINT
         self.retval, self.K, self.D, rvecs, tvecs = cv2.calibrateCamera(
-            self.object_points, self.image_points, self.xy, None, None, flags=flags,
+            self.object_points, self.image_points, self.xy, init_K, init_D, flags=flags,
         )
 
         for idx, key in enumerate(self.valid_keys):
@@ -240,14 +242,12 @@ class Cam(dict):
         return vis
 
     def _get_points_for_cv2(self, name="image_points"):
-        points = [self[key][name] for key in self.valid_keys]
-        if isinstance(points[0], dict):
-            points = [
-                np.concatenate(
-                    [id_to_points[id] for id in sorted(id_to_points)], axis=0
-                )
-                for id_to_points in points
-            ]
+        points = []
+        for key in self.valid_keys:
+            point = self[key][name]
+            if isinstance(point, dict):
+                point = np.concatenate([point[id] for id in sorted(point)], axis=0)
+            points.append(point)
         return points
 
     def valid_keys_intersection(cam1, cam2):

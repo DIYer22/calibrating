@@ -7,10 +7,12 @@ from collections import namedtuple
 with boxx.inpkg():
     from . import utils
 
-PredefPrinter = namedtuple("PredefPrinter", ["hw", "ppi"])
-A4 = PredefPrinter((2480, 3508), 321.29)
-A3 = PredefPrinter((3508, 4961), 308.86)
-surface_book2_inch15 = PredefPrinter(hw=(2160, 3240), ppi=260)
+PredefPrinter = namedtuple("PredefPrinter", ["hw", "ppi", "name"])
+A4 = PredefPrinter((2480, 3508), 321.29, "A4")
+A3 = PredefPrinter((3508, 4961), 308.86, "A3")
+surface_book2_inch15 = PredefPrinter(
+    hw=(2160, 3240), ppi=260, name="surface_book2_inch15"
+)
 
 
 class MetaFeatureLib:
@@ -247,7 +249,7 @@ class CharucoFeatureLib(MetaFeatureLib):
             ret, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
                 marker_corners, marker_ids, img, self.board
             )
-            if charuco_ids is not None:
+            if charuco_ids is not None and len(charuco_ids) >= 4:
                 d["ids"] = charuco_ids[:, 0]
                 d["image_points"] = dict(zip(d["ids"], charuco_corners))
                 d["object_points"] = {
