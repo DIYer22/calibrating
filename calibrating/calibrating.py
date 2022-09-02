@@ -191,7 +191,14 @@ class Cam(dict):
             rvec, tvec = np.zeros((3, 1)), np.zeros((3, 1))
         else:
             rvec, tvec = utils.T_to_r_t(T)
-        return cv2.projectPoints(xyzs, rvec, tvec, self.K, self.D)[0]
+        return cv2.projectPoints(xyzs, rvec, tvec, self.K, self.D)[0][:, 0]
+
+    def undistort_points(self, uvs):
+        K = self.K
+        if uvs.ndim == 2:
+            uvs = uvs[:, None]
+        normalized_undistort_points = cv2.undistortPoints(uvs, K, self.D)[:, 0]
+        return normalized_undistort_points * [[K[0, 0], K[1, 1]]] + [K[:2, 2]]
 
     def get_T_cam2_in_self(cam1, cam2):
         Ts = []
