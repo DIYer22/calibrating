@@ -254,18 +254,23 @@ class Cam(dict):
         return sorted(cam1.valid_keys.intersection(cam2.valid_keys))
 
     def __str__(self,):
+        def with_delta(v, base):
+            sub = v - base
+            s = f"{round(v, 1)} Δ{'' if sub<0 else '+'}{round(sub, 1)}({round(abs(sub)/base*100, 1)}%)"
+            return s
+
         s = (
-            "Cam: \n\tname: '%s' \n\txy: %s \n\tfovs: %s \n\tK: %s \n\tD: %s \n\tvalid=%s/%s \n\tretval=%.2f \n\timage_path=%s \n"
+            "Cam(name='%s'): \n\txy: %s \n\tfovs: %s \n\tK: %s\n\tD: %s \n\tvalid=%s/%s \n\tretval=%f \n\timage_path=%s \n"
             % (
                 self.name,
                 self.xy,
                 utils._str_angle_dic(self.fovs),
-                "fx=%s, fy=%s, cx=%s, cy=%s"
+                "\n\t\tfx=%s, fy=%s"
+                % (round(self.fx, 1), with_delta(self.fy, self.fx),)
+                + "\n\t\tcx=%s, cy=%s"
                 % (
-                    round(self.fx, 1),
-                    round(self.fy, 1),
-                    round(self.cx, 1),
-                    round(self.cy, 1),
+                    with_delta(self.cx, self.xy[0] / 2),
+                    with_delta(self.cy, self.xy[1] / 2),
                 ),
                 str(self.D.round(2)),
                 len(self.__dict__.get("image_points", [])),
@@ -283,7 +288,7 @@ class Cam(dict):
         dic = {
             k: v.tolist() if isinstance(v, np.ndarray) else v
             for k, v in self.__dict__.items()
-            if k in ["D", "xy", "name", "T_in_main_cam"]
+            if k in ["D", "xy", "name", "T_in_main_cam", "retval"]
         }
         dic.update(intrinsic_format_conversion(self.K))
         if return_dict:

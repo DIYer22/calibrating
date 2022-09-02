@@ -256,7 +256,7 @@ class Stereo:
         r = utils.T_to_r(self.R).squeeze()
         du = np.linalg.norm(r) * 180 / np.pi
         try:
-            strr = "Stereo:\n"
+            strr = "Stereo(cam1='%s', cam2='%s'):\n" % (self.cam1.name, self.cam2.name)
             strr += "\t xy: %s\n" % str(list(self.cam1.xy))[1:-1]
             strr += "\t baseline: %.2fcm\n" % (100 * self.baseline)
             strr += "\t t(cm): [%s]\n" % (

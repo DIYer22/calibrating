@@ -209,7 +209,7 @@ class ArucoFeatureLib(MetaFeatureLib):
                 d["corners"], 0.1, cam.K, cam.D
             )
             for i in range(rvec.shape[0]):
-                cv2.aruco.drawAxis(img, cam.K, cam.D, rvec[i], tvec[i], 0.05)
+                cv2.drawFrameAxes(img, cam.K, cam.D, rvec[i], tvec[i], 0.05)
         return img
 
 
