@@ -7,13 +7,14 @@ import os
 import cv2
 import yaml
 import copy
+import uuid
 import pickle
 import numpy as np
 from glob import glob
 from tqdm import tqdm
 
 with boxx.inpkg():
-    from .feature_libs import CheckboardFeatureLib
+    from .feature_libs import CheckboardFeatureLib, MetaFeatureLib
     from .stereo import Stereo
     from .utils import r_t_to_T, intrinsic_format_conversion
     from . import utils
@@ -97,6 +98,46 @@ class Cam(dict):
                 vis = d.get("feature_lib", self.feature_lib).vis(d, self)
                 boxx.imsave(visdir + "/" + key + ".jpg", vis)
                 d.pop("img")
+
+    def fine_tuning_intrinsic(self, base_cam, momenta=0.5):
+        """
+        Fine tuning intrinsic from base_cam's K and D. 
+        By add new image_points and object_points that fit base_cam's intrinsic
+        Then run self.calibrate() again
+
+        Parameters
+        ----------
+        base_cam : Cam
+            base cam.
+        momenta : float, [0~1]
+            the momenta of base_cam's intrinsic. The default is .5.
+        """
+        if momenta in (0, 1):
+            if momenta == 1:
+                self.load(base_cam.dump())
+            return self
+        d0 = self[list(self)[0]]
+        meta_feature_lib = MetaFeatureLib()
+        points = self._get_points_for_cv2()
+        newn = sum(map(len, points))
+        needn = int(newn * momenta / (1 - momenta))
+        uvs = np.random.rand(needn, 2) * [list(self.xy)]
+
+        normalized_undistort_points = cv2.undistortPoints(
+            uvs[:, None], base_cam.K, base_cam.D
+        )[:, 0]
+        xyzs = np.zeros_like(normalized_undistort_points, shape=(needn, 3))
+        xyzs[:, :2] = normalized_undistort_points
+
+        dn = int(len(points) * momenta / (1 - momenta))
+        for d_idx in range(dn):
+            d = dict(feature_lib=meta_feature_lib)
+            d["path"] = d0["path"]
+            d["image_points"] = np.float32(uvs[d_idx::dn])
+            d["object_points"] = np.float32(xyzs[d_idx::dn])
+            self[f"~base_cam_points-{self.name}-{str(uuid.uuid1())}"] = d
+        self.calibrate()
+        return self
 
     @property
     def valid_keys(self):

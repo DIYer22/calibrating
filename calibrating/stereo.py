@@ -234,11 +234,14 @@ class Stereo:
         zs = baseline * K[0, 0] / disps
         disp_on_z = baseline * K[0, 0] / zs
 
-        print("Depth - disparity 关系:")
+        print("Depth(m) - disparity(pixel):")
         plt.plot(zs, disp_on_z)
         plt.grid()
         plt.show()
-        print("Depth - 单位Disparity深度范围关系(深度不确定度):")
+        print("\nTheoretical zmap precision:")
+        print(
+            "\tDepth - The depth range represented by a pixel disparity(depth uncertainty)"
+        )
         plt.plot(zs, np.abs(uncen_on_disp))
         # plt.grid()
         # plt.show()
@@ -246,8 +249,7 @@ class Stereo:
         # plt.plot(zs, zs / K[0, 0])
         plt.grid()
         plt.show()
-        # TODO
-        print("TODO: x,y 双目共同视野 - depth 关系:")
+        # TODO: x,y 双目共同视野 - depth 关系
         print(
             "-" * 15, "End of Stereo.precision_analysis", "-" * 15,
         )
@@ -514,3 +516,4 @@ if __name__ == "__main__":
     re = stereo.get_depth(img1, img2)
     boxx.tree(re)
     utils.vis_align(re["undistort_img1"], re["unrectify_depth"])
+    stereo.precision_analysis()

@@ -249,7 +249,7 @@ class CharucoFeatureLib(MetaFeatureLib):
             ret, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
                 marker_corners, marker_ids, img, self.board
             )
-            if charuco_ids is not None and len(charuco_ids) >= 4:
+            if charuco_ids is not None and len(charuco_ids) >= 11:  # 4
                 d["ids"] = charuco_ids[:, 0]
                 d["image_points"] = dict(zip(d["ids"], charuco_corners))
                 d["object_points"] = {
