@@ -180,6 +180,35 @@ def vis_depth(depth, slicen=0, fix_range=None, colormap=None):
     return vis
 
 
+def vis_depth_l1(re, gt=0, max_l1=0.05):
+    """
+    Pretty vis of depth l1, which will ignore missing depth.
+    Could distinguish missing depth(black) and l1==0(grey)
+
+    Parameters
+    ----------
+    re : depth
+        unit is m
+    gt : depth or float, optional
+        The default is 0.
+    max_l1 : float, optional
+        max l1 to vis. The default is 0.05.
+    """
+    GREY_CLIP = 0.1  # how_grey_to_distinguish missing depth and l1==0
+    if isinstance(gt, (int, float, np.number)):
+        gt = np.ones_like(re) * gt
+
+    mask_valid = np.bool8(re) & np.bool8(gt)
+    l1 = (re - gt) * mask_valid
+
+    # far  d>0  red; near d<0 green
+    l1_vis_ = np.array([l1 * (l1 > 0), -l1 * (l1 < 0), l1 * 0])
+    l1_vis = np.uint8(
+        l1_vis_.clip(max_l1 * GREY_CLIP, max_l1) * mask_valid / max_l1 * 255
+    ).transpose(1, 2, 0)
+    return l1_vis
+
+
 def vis_point_uvs(
     uvs,
     img_or_shape=None,
@@ -299,7 +328,7 @@ def get_test_cams(feature_type="checkboard"):
                 "../../../calibrating_example_data/paired_stereo_and_depth_cams_aruco",
             )
         )
-        feature_lib = ArucoFeatureLib()
+        feature_lib = ArucoFeatureLib(occlusion=True)
         caml = Cam(
             glob(os.path.join(root, "*", "stereo_l.jpg")),
             feature_lib,
@@ -322,5 +351,99 @@ def get_test_cams(feature_type="checkboard"):
         return dict(caml=caml, camr=camr, camd=camd)
 
 
+class CvShow:
+    """
+    Object-oriented Pythonic cv2.imshow
+
+    >>> with cvshow:
+            for key in cvshow:
+                cvshow.imshow(rgb, "Windows name")
+                if key == "q":
+                    break
+    
+    Or a more sample but not destroyAllWindows() when meet Exception 
+    >>> for key in cvshow:
+            cvshow.imshow(rgb, "Windows name")
+            if key == "q":
+                cvshow.breakk()
+    """
+
+    destroyed = False
+    destroyed_tag_for_breakk = False
+    temp_keys = []
+
+    def __init__(self):
+        pass
+
+    def __enter__(self):
+        CvShow.destroyed = False
+        self.get_key()
+        return self
+
+    def __exit__(self, *args):
+        self.destroyed = True
+        cv2.destroyAllWindows()
+
+    @classmethod
+    def imshow(cls, rgb, window="default"):
+        rgb = rgb[..., ::-1] if rgb.ndim == 3 and rgb.shape[-1] == 3 else rgb
+        cv2.imshow(window, rgb)
+        key_idx = cv2.waitKey(1)
+        if key_idx != -1:
+            cls.temp_keys.append(key_idx)
+
+    @classmethod
+    def get_key(cls):
+        key_idx = cv2.waitKey(1)
+        if key_idx != -1:
+            cls.temp_keys.append(key_idx)
+        if len(cls.temp_keys):
+            key_idx = cls.temp_keys.pop(0)
+        if 0 < key_idx and key_idx < 256:
+            return chr(key_idx)
+        return key_idx
+
+    def __next__(self):
+        if self.destroyed_tag_for_breakk:
+            self.destroyed_tag_for_breakk = False
+            raise StopIteration()
+        return self.get_key()
+
+    def __iter__(self):
+        return self
+
+    def __call__(self, rgb, window="default"):
+        self.imshow(rgb, window=window)
+
+    def breakk(self):
+        self.__exit__()
+        self.destroyed_tag_for_breakk = True
+
+    end = breakk
+    stop = breakk
+
+    @classmethod
+    def test(cls):
+        import skimage.data
+
+        rgb = skimage.data.coffee()
+        with cvshow:
+            for key in cvshow:
+                rgb = np.append(rgb[1:], rgb[:1], 0)
+                cvshow.imshow(rgb, "Scroll RGB image vertically by with")
+                if key == "q":
+                    break
+        for key in cvshow:
+            rgb = np.append(rgb[1:], rgb[:1], 0)
+            cvshow.imshow(rgb, "Scroll RGB image vertically no with")
+            if key == "q":
+                cvshow.breakk()
+
+
+cvshow = CvShow()
+
+
 if __name__ == "__main__":
-    pass
+    from boxx import *
+
+    CvShow.test()

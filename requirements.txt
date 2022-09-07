@@ -1,4 +1,4 @@
-boxx
+boxx>=0.10.6
 opencv-contrib-python
 tqdm
 pyyaml
