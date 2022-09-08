@@ -35,6 +35,13 @@ def T_to_r_t(T):
     return rvec, tvec
 
 
+def convert_points_for_cv2(dic_or_np):
+    point = dic_or_np
+    if isinstance(point, dict):
+        point = np.concatenate([point[id] for id in sorted(point)], axis=0)
+    return point
+
+
 def apply_T_to_point_cloud(T, point_cloud):
     new_point_cloud = np.ones((len(point_cloud), 4))
     new_point_cloud[:, :3] = point_cloud

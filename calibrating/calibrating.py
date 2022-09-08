@@ -293,9 +293,7 @@ class Cam(dict):
         points = []
         for key in self.valid_keys:
             point = self[key][name]
-            if isinstance(point, dict):
-                point = np.concatenate([point[id] for id in sorted(point)], axis=0)
-            points.append(point)
+            points.append(utils.convert_points_for_cv2(point))
         return points
 
     def valid_keys_intersection(cam1, cam2):
@@ -366,7 +364,28 @@ class Cam(dict):
         dic["D"] = np.float64(dic["D"])
         dic["xy"] = tuple(dic["xy"])
         self.__dict__.update(dic)
+        if len(self):
+            self.update_intrinsic()
         return self
+
+    def update_intrinsic(self):
+        """
+        When update intrinsic, will update T in all calibrate image dic by self.perspective_n_point()
+        """
+        for d in self.values():
+            if "image_points" in d:
+                d.update(
+                    self.perspective_n_point(d["image_points"], d["object_points"],)
+                )
+
+    def perspective_n_point(self, image_points, object_points):
+        image_points = utils.convert_points_for_cv2(image_points)
+        object_points = utils.convert_points_for_cv2(object_points)
+        retval, rvecs, tvecs, reprojectionError = cv2.solvePnPGeneric(
+            object_points, image_points[:, None], self.K, self.D
+        )
+        T = utils.r_t_to_T(rvecs[0], tvecs[0])
+        return dict(T=T, retval=retval, reprojection_error=reprojectionError)
 
     def copy(self):
         new = type(self)()
