@@ -182,11 +182,12 @@ def vis_depth(depth, slicen=0, fix_range=None, colormap=None):
     return vis
 
 
-def vis_depth_l1(re, gt=0, max_l1=0.05):
+def vis_depth_l1(re, gt=0, max_l1=0.05, overexposed=True):
     """
     Pretty vis of depth l1, which will ignore missing depth.
     Could distinguish missing depth(black) and l1==0(grey)
-
+    For l1>0(far) red, l1<0(near) green, color of overexposed area will turns white
+    
     Parameters
     ----------
     re : depth
@@ -202,12 +203,17 @@ def vis_depth_l1(re, gt=0, max_l1=0.05):
 
     mask_valid = np.bool8(re) & np.bool8(gt)
     l1 = (re - gt) * mask_valid
-
-    # far  d>0  red; near d<0 green
-    l1_vis_ = np.array([l1 * (l1 > 0), -l1 * (l1 < 0), l1 * 0])
-    l1_vis = np.uint8(
-        l1_vis_.clip(max_l1 * GREY_CLIP, max_l1) * mask_valid / max_l1 * 255
-    ).transpose(1, 2, 0)
+    l1_gt_0 = l1 > 0
+    l1_lt_0 = l1 < 0
+    # l1>0(far) red, l1<0(near) green
+    l1_vis_ = np.array([l1 * (l1_gt_0), -l1 * (l1_lt_0), l1 * 0])
+    l1_vis_norma = l1_vis_.clip(0, max_l1) / max_l1
+    l1_vis_with_grey = (l1_vis_norma * (1 - GREY_CLIP) + GREY_CLIP) * mask_valid
+    l1_vis = np.uint8(l1_vis_with_grey * 255).transpose(1, 2, 0)
+    if overexposed:
+        overexposed_mask = np.abs(l1) > max_l1
+        l1_vis[overexposed_mask & (l1_gt_0), 1:] = [[255, 0]]
+        l1_vis[overexposed_mask & (l1_lt_0), ::2] = 230
     return l1_vis
 
 
