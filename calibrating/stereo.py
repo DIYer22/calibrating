@@ -362,7 +362,7 @@ class Stereo:
         return res
 
     def set_stereo_matching(
-        self, stereo_matching, max_depth=None, translation_rectify_img=False
+        self, stereo_matching, max_depth=None, translation_rectify_img=None
     ):
         """
         Parameters
@@ -371,12 +371,17 @@ class Stereo:
             Subinstance of calibrating.MetaStereoMatching
         max_depth : float, optional
             The default is Stereo.MAX_DEPTH.
-        translation_rectify_img : bool, the default is False.
+        translation_rectify_img : bool, the default is None.
             When self.get_depth(), translation rectify_img2 by self.min_disparity, 
             self.min_disparity is accroding to self.max_depth.
+            default is accroding to bool(max_depth)
         """
         self.stereo_matching = stereo_matching
-        self.translation_rectify_img = translation_rectify_img
+        self.translation_rectify_img = (
+            bool(max_depth)
+            if translation_rectify_img is None
+            else translation_rectify_img
+        )
         self.max_depth = max_depth or self.MAX_DEPTH
         self.min_disparity = int(self.cam1.K[0, 0] * self.baseline / self.max_depth)
 
@@ -505,9 +510,7 @@ if __name__ == "__main__":
     cam1.vis_stereo(cam2, stereo)
 
     stereo_matching = SemiGlobalBlockMatching({})
-    stereo.set_stereo_matching(
-        stereo_matching, max_depth=3.5, translation_rectify_img=True
-    )
+    stereo.set_stereo_matching(stereo_matching, max_depth=3.5)
 
     key = list(cam1)[0]
     img1 = boxx.imread(cam1[key]["path"])
