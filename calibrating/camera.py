@@ -146,15 +146,18 @@ class Cam(dict):
     def _cache(self, do_cache=False):
         cache_path = TEMP + "/calibrating-cache-" + self.name + ".pkl"
         if self.enable_cache and os.path.isfile(cache_path):
-            loaded = pickle.load(open(cache_path, "rb"))
-            if set(self.img_paths.values()) == set(loaded.img_paths.values()):
-                self.clear()
-                self.update(loaded)
-                self.__dict__.clear()
-                self.__dict__.update(loaded.__dict__)
-                print("Load from cache:", cache_path)
-                print(self)
-                return True
+            try:
+                loaded = pickle.load(open(cache_path, "rb"))
+                if set(self.img_paths.values()) == set(loaded.img_paths.values()):
+                    self.clear()
+                    self.update(loaded)
+                    self.__dict__.clear()
+                    self.__dict__.update(loaded.__dict__)
+                    print("Load from cache:", cache_path)
+                    print(self)
+                    return True
+            except Exception as e:
+                print(f"Load cache failed! Because {type(e).__name__}('{e})'")
         if do_cache:
             try:
                 pickle.dump(self, open(cache_path, "wb"))
