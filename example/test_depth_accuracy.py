@@ -8,6 +8,7 @@ with boxx.impt(".."):
     from calibrating import *
     from calibrating import (
         Cam,
+        Stereo,
         SemiGlobalBlockMatching,
         vis_depth,
         get_test_cams,
@@ -44,75 +45,6 @@ class StereoDifferentK(calibrating.Stereo):
         return depth_in_cam1
 
 
-class FeatureMatching(calibrating.MetaStereoMatching):
-    def __init__(self, feature_lib, dense_predict=False):
-        self.feature_lib = feature_lib
-        self.dense_predict = dense_predict
-
-    def __call__(self, img1, img2):
-        self.feature_lib
-        d1 = dict(img=img1)
-        self.feature_lib.find_image_points(d1)
-        image_points1 = d1["image_points"]
-        d2 = dict(img=img2)
-        self.feature_lib.find_image_points(d2)
-        image_points2 = d2["image_points"]
-
-        if isinstance(image_points1, dict):
-            image_points1 = []
-            image_points2 = []
-            for key in sorted(set(d1["image_points"]).intersection(d2["image_points"])):
-                image_points1.append(d1["image_points"][key])
-                image_points2.append(d2["image_points"][key])
-            image_points1 = np.concatenate(image_points1, 0)
-            image_points2 = np.concatenate(image_points2, 0)
-
-        rectify_std = np.std((image_points2 - image_points1)[:, 1])
-        point_disps = (image_points1 - image_points2)[:, 0]
-        xyds = np.append(image_points1, point_disps[:, None], axis=-1)
-        disp = utils.xyzs_to_arr2d(xyds, img1.shape[:2])
-        return disp
-
-
-def sparse_to_points(sparse):
-    y, x = sparse.shape
-    ys, xs = np.mgrid[:y, :x]
-    mask = (sparse != 0) & np.isfinite(sparse)
-    points = np.array([xs[mask], ys[mask], sparse[mask]]).T
-    return points
-
-
-def fit(xyzs, fit_xys):
-    import scipy.interpolate
-
-    spline = scipy.interpolate.Rbf(
-        xyzs[:, 0],
-        xyzs[:, 1],
-        xyzs[:, 2],
-        function="thin_plate",
-        smooth=0.5,
-        episilon=5,
-    )
-    zs = spline(fit_xys[:, 0], fit_xys[:, 1],)
-    fit_xyzs = np.append(fit_xys, zs[:, None], axis=-1)
-    return fit_xyzs
-
-
-def dense_2d(sparse, constrained_type=None):
-    points = sparse_to_points(sparse)
-
-    mask = np.zeros_like(sparse, np.uint8)
-    if constrained_type is not None:
-        convex_hull = cv2.convexHull(np.int32(points[:, :2].round()))
-        cv2.drawContours(mask, [convex_hull], -1, 255, -1)
-        fit_xys = sparse_to_points(mask)[:, :2]
-    else:
-        fit_xys = sparse_to_points(~mask)
-    fit_xyzs = fit(points, fit_xys)
-    dense = utils.xyzs_to_arr2d(fit_xyzs, sparse.shape, arr2d=sparse)
-    return dense
-
-
 if __name__ == "__main__":
     from boxx import *
 
@@ -126,27 +58,18 @@ if __name__ == "__main__":
     feature_lib = caml.feature_lib
     # caml, camr = camd, camr
 
-    key = caml.valid_keys_intersection(camd)[2]
+    key = caml.valid_keys_intersection(camd)[0]
     imgl = imread(caml[key]["path"])
     imgr = imread(camr[key]["path"])
-    color_path_d = camd[key]["path"]
-    depthd = imread(color_path_d.replace("color.", "depth.").replace(".jpg", ".png"))
-    depthd = np.float32(depthd / 1000)
+    imgd = imread(camd[key]["path"])
+    depthd = imread(camd[key]["path"].replace("color.jpg", "depth.png")) / 1000
+    # depthd = np.float32(depthd / 1000)
     undistort_imgl = cv2.undistort(imgl, caml.K, caml.D)
     stereo = Stereo(caml, camr)
     # Cam.vis_stereo(caml, camr, stereo)
 
     # get depth_board by chboard T
-    T_board = caml[key]["T"]
-    object_points = caml[key]["object_points"]
-    if isinstance(object_points, dict):
-        object_points = np.concatenate(list(caml[key]["object_points"].values()), 0)
-    xyz_in_caml = utils.apply_T_to_point_cloud(T_board, object_points)
-    depth_board = sparse_board = utils.point_cloud_to_depth(
-        xyz_in_caml, caml.K, caml.xy
-    )
-    if is_dense:
-        depth_board = 1 / dense_2d(1 / sparse_board, "convex_hull")
+    depth_board = caml.get_calibration_board_depth(caml[key]["path"])["depth"]
 
     # get depthl by depthd
     T_camd_in_caml = caml.get_T_cam2_in_self(camd)
@@ -158,15 +81,13 @@ if __name__ == "__main__":
     stereo2.T, stereo2.t = T[:3, :3], T[:3, 3:]
     # stereo2._get_undistort_rectify_map()
 
-    # get depth_fm by FeatureMatching
-    feature_matching = FeatureMatching(feature_lib, False)
+    # get depth_fm by MatchingByFeatureLib
+    feature_matching = calibrating.MatchingByFeatureLib(feature_lib)
     stereo.set_stereo_matching(
         feature_matching, max_depth=3, translation_rectify_img=True
     )
     re_fm = stereo.get_depth(imgl, imgr)
-    depth_fm = sparse_fm = re_fm["unrectify_depth"]
-    if is_dense:
-        depth_fm = 1 / dense_2d(1 / sparse_fm, "convex_hull")
+    depth_fm = re_fm["unrectify_depth"]
 
     # get depth_sgbm by sgbm
     sgbm = SemiGlobalBlockMatching({})

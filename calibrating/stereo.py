@@ -494,6 +494,44 @@ class SemiGlobalBlockMatching(MetaStereoMatching):
         return disparity
 
 
+class MatchingByFeatureLib(MetaStereoMatching):
+    """
+    Stereo mathch disp by feature_lib's image_points
+    return a dense disp on calibration board
+    """
+    def __init__(self, feature_lib, dense_predict=True):
+        self.feature_lib = feature_lib
+        self.dense_predict = dense_predict
+
+    def __call__(self, img1, img2):
+        self.feature_lib
+        d1 = dict(img=img1)
+        self.feature_lib.find_image_points(d1)
+        image_points1 = d1["image_points"]
+        d2 = dict(img=img2)
+        self.feature_lib.find_image_points(d2)
+        image_points2 = d2["image_points"]
+
+        if isinstance(image_points1, dict):
+            image_points1 = []
+            image_points2 = []
+            for key in sorted(set(d1["image_points"]).intersection(d2["image_points"])):
+                image_points1.append(d1["image_points"][key])
+                image_points2.append(d2["image_points"][key])
+            image_points1 = np.concatenate(image_points1, 0)
+            image_points2 = np.concatenate(image_points2, 0)
+
+        rectify_std = np.std((image_points2 - image_points1)[:, 1])
+        point_disps = (image_points1 - image_points2)[:, 0]
+        xyds = np.append(image_points1, point_disps[:, None], axis=-1)
+        sparse_disp = utils.uvzs_to_arr2d(xyds, img1.shape[:2])
+        if self.dense_predict:
+            dense_disp = utils.interpolate_sparse2d(sparse_disp, "convex_hull")
+            return dense_disp
+        else:
+            return sparse_disp
+
+
 if __name__ == "__main__":
     from boxx import *
     from calibrating import Cam

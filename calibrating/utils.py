@@ -104,21 +104,71 @@ def point_cloud_to_depth(points, K, xy):
     xyzs[:, :2] /= xyzs[:, 2:]
     sorted_idx = np.argsort(-xyzs[:, 2])
     xyzs = xyzs[sorted_idx]
-    return xyzs_to_arr2d(xyzs, xy[::-1])
+    return uvzs_to_arr2d(xyzs, xy[::-1])
 
 
-def xyzs_to_arr2d(xyzs, hw=None, bg_value=0, arr2d=None):
+def uvzs_to_arr2d(uvzs, hw=None, bg_value=0, arr2d=None):
     if arr2d is None:
         if hw is None:
-            hw = np.int32(xyzs.max(0)[:2].round()) + 1
-        arr2d = np.ones(hw, xyzs.dtype) * bg_value
+            hw = np.int32(uvzs.max(0)[:2].round()) + 1
+        arr2d = np.ones(hw, uvzs.dtype) * bg_value
     else:
         hw = arr2d.shape[:2]
 
-    xs, ys = np.int32(xyzs[:, :2].round()).T
+    xs, ys = np.int32(uvzs[:, :2].round()).T
     mask = (xs >= 0) & (xs < hw[1]) & (ys >= 0) & (ys < hw[0])
-    arr2d[ys[mask], xs[mask]] = xyzs[:, 2][mask]
+    arr2d[ys[mask], xs[mask]] = uvzs[:, 2][mask]
     return arr2d
+
+
+# TODO rm
+def xyzs_to_arr2d(*args, **argkws):
+    print("\n\nWarning: xyzs_to_arr2d have rename to uvzs_to_arr2d")
+    return uvzs_to_arr2d(*args, **argkws)
+
+
+def arr2d_to_uvzs(arr2d, mask=None):
+    y, x = arr2d.shape
+    ys, xs = np.mgrid[:y, :x]
+    if mask is None:
+        uvzs = np.array([xs, ys, arr2d]).T.reshape(-1, 3)
+    else:
+        if mask.dtype != np.bool8:
+            mask = np.bool8(mask)
+        uvzs = np.array([xs[mask], ys[mask], arr2d[mask]]).T
+    return uvzs
+
+
+def interpolate_sparse2d(sparse2d, constrained_type=None):
+    """
+    if constrained_type == True, then only interpolate convexHull area
+    """
+    mask_to_uvzs = (sparse2d != 0) & np.isfinite(sparse2d)
+    uvzs = arr2d_to_uvzs(sparse2d, mask_to_uvzs)
+    input_mask = np.zeros_like(sparse2d, np.uint8)
+    if constrained_type is not None and constrained_type:
+        convex_hull = cv2.convexHull(np.int32(uvzs[:, :2].round()))
+        cv2.drawContours(input_mask, [convex_hull], -1, 1, -1)
+        input_uvs = arr2d_to_uvzs(input_mask, input_mask)[:, :2]
+    else:
+        input_uvs = arr2d_to_uvzs(input_mask)[:, :2]
+
+    # TODO replaced by Solving equations of the z = ay+bx+c
+    # fit uvzs linearly
+    import scipy.interpolate
+
+    spline = scipy.interpolate.Rbf(
+        uvzs[:, 0],
+        uvzs[:, 1],
+        uvzs[:, 2],
+        function="thin_plate",
+        smooth=0.5,
+        episilon=5,
+    )
+    output = spline(input_uvs[:, 0], input_uvs[:, 1],)
+    output_uvzs = np.append(input_uvs, output[:, None], axis=-1)
+    dense = uvzs_to_arr2d(output_uvzs, sparse2d.shape, arr2d=sparse2d.copy())
+    return dense
 
 
 def mean_Ts(Ts):

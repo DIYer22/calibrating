@@ -203,29 +203,47 @@ class Cam(dict):
         stereo.shows(*stereo.rectify(imgl, imgr))
         return stereo
 
-    def get_calibration_board_T(self, img, feature_lib=None):
+    def get_calibration_board_T(self, img_or_path_or_d, feature_lib=None):
+        if isinstance(img_or_path_or_d, dict):
+            d = img_or_path_or_d.copy()
+            if "img" not in d:
+                d["img"] = imread(d["path"])
+        else:
+            img = imread(img_or_path) if isinstance(img_or_path, str) else img_or_path
+            d = dict(img=img)
+        assert d["img"].shape[:2][::-1] == self.xy
         if feature_lib is None:
-            assert hasattr(self, "feature_lib"), "Please set feature_lib"
-            feature_lib = self.feature_lib
-        assert img.shape[:2][::-1] == self.xy
-        d = dict(img=img)
+            feature_lib = getattr(self, "feature_lib")
+            assert feature_lib, "Please set feature_lib or cam.feature_lib"
         feature_lib.find_image_points(d)
         if "image_points" in d:
-            if isinstance(d["image_points"], dict):
-                d["image_points"] = np.concatenate(
-                    [d["image_points"][k] for k in sorted(d["image_points"])], 0
-                )
-                d["object_points"] = np.concatenate(
-                    [d["object_points"][k] for k in sorted(d["object_points"])], 0
-                )
-            retval, rvecs, tvecs, reprojectionError = cv2.solvePnPGeneric(
-                d["object_points"], d["image_points"][:, None], self.K, self.D
-            )
-            T_board_in_cam = utils.r_t_to_T(rvecs[0], tvecs[0])
-            d.update(
-                T=T_board_in_cam, reprojectionError=reprojectionError, retval=retval
-            )
+            d.update(self.perspective_n_point(d["image_points"], d["object_points"]))
         return d
+
+    def get_calibration_board_depth(cam, img_or_path_or_d, is_dense=True):
+        d = cam.get_calibration_board_T(img_or_path_or_d)
+        object_points = d["object_points"]
+        if isinstance(object_points, dict):
+            object_points = np.concatenate(list(d["object_points"].values()), 0)
+        xyz_in_caml = utils.apply_T_to_point_cloud(d["T"], object_points)
+        depth_board = sparse_board = utils.point_cloud_to_depth(
+            xyz_in_caml, cam.K, cam.xy
+        )
+        if is_dense:
+            depth_board = 1 / utils.interpolate_sparse2d(
+                1 / sparse_board, "convex_hull"
+            )
+        d["depth"] = depth_board
+        return d
+
+    def perspective_n_point(self, image_points, object_points):
+        image_points = utils.convert_points_for_cv2(image_points)
+        object_points = utils.convert_points_for_cv2(object_points)
+        retval, rvecs, tvecs, reprojectionError = cv2.solvePnPGeneric(
+            object_points, image_points[:, None], self.K, self.D
+        )
+        T = utils.r_t_to_T(rvecs[0], tvecs[0])
+        return dict(T=T, retval=retval, reprojection_error=reprojectionError)
 
     def project_points(self, xyzs, T=None):
         if T is None:
@@ -377,15 +395,6 @@ class Cam(dict):
                 d.update(
                     self.perspective_n_point(d["image_points"], d["object_points"],)
                 )
-
-    def perspective_n_point(self, image_points, object_points):
-        image_points = utils.convert_points_for_cv2(image_points)
-        object_points = utils.convert_points_for_cv2(object_points)
-        retval, rvecs, tvecs, reprojectionError = cv2.solvePnPGeneric(
-            object_points, image_points[:, None], self.K, self.D
-        )
-        T = utils.r_t_to_T(rvecs[0], tvecs[0])
-        return dict(T=T, retval=retval, reprojection_error=reprojectionError)
 
     def copy(self):
         new = type(self)()
