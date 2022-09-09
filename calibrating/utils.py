@@ -280,7 +280,7 @@ def vis_depth(depth, slicen=0, fix_range=None, colormap=None):
     return vis
 
 
-def vis_depth_l1(re, gt=0, max_l1=0.05, overexposed=True):
+def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True):
     """
     Pretty vis of depth l1, which will ignore missing depth.
     Could distinguish missing depth(black) and l1==0(grey)
@@ -293,7 +293,9 @@ def vis_depth_l1(re, gt=0, max_l1=0.05, overexposed=True):
     gt : depth or float, optional
         The default is 0.
     max_l1 : float, optional
-        max l1 to vis. The default is 0.05.
+        max_l1 to vis. area of abs(l1) > max_l1 will overexposed
+        if max_l1 < 0 and in (-1 ~ 0), the max_l1 = top k% of l1
+        The default None is -0.05 or top 5% as overexposed.
     """
     GREY_CLIP = 0.1  # how_grey_to_distinguish missing depth and l1==0
     if isinstance(gt, (int, float, np.number)):
@@ -301,6 +303,20 @@ def vis_depth_l1(re, gt=0, max_l1=0.05, overexposed=True):
 
     mask_valid = np.bool8(re) & np.bool8(gt)
     l1 = (re - gt) * mask_valid
+    abs_l1 = np.abs(l1)
+    if max_l1 is None:
+        max_l1 = -0.05 if overexposed else 0
+    if max_l1 == 0 or max_l1 <= -1:
+        max_l1 = abs_l1.max()
+    elif max_l1 < 0:
+        valid_num = mask_valid.sum()
+        if valid_num:
+            k = int(-max_l1 * valid_num)
+            k = max(k, 1)
+            overexposed_l1 = -np.partition(-abs_l1[mask_valid], k)[:k]
+            max_l1 = overexposed_l1.min()
+        else:
+            max_l1 = 1.0
     l1_gt_0 = l1 > 0
     l1_lt_0 = l1 < 0
     # l1>0(far) red, l1<0(near) green
@@ -309,7 +325,7 @@ def vis_depth_l1(re, gt=0, max_l1=0.05, overexposed=True):
     l1_vis_with_grey = (l1_vis_norma * (1 - GREY_CLIP) + GREY_CLIP) * mask_valid
     l1_vis = np.uint8(l1_vis_with_grey * 255).transpose(1, 2, 0)
     if overexposed:
-        overexposed_mask = np.abs(l1) > max_l1
+        overexposed_mask = abs_l1 > max_l1
         l1_vis[overexposed_mask & (l1_gt_0), 1:] = [[255, 0]]
         l1_vis[overexposed_mask & (l1_lt_0), ::2] = 230
     return l1_vis
