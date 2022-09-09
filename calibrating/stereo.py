@@ -499,6 +499,7 @@ class MatchingByFeatureLib(MetaStereoMatching):
     Stereo mathch disp by feature_lib's image_points
     return a dense disp on calibration board
     """
+
     def __init__(self, feature_lib, dense_predict=True):
         self.feature_lib = feature_lib
         self.dense_predict = dense_predict

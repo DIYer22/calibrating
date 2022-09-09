@@ -209,19 +209,24 @@ class Cam(dict):
             if "img" not in d:
                 d["img"] = imread(d["path"])
         else:
-            img = imread(img_or_path) if isinstance(img_or_path, str) else img_or_path
+            img = (
+                imread(img_or_path_or_d)
+                if isinstance(img_or_path_or_d, str)
+                else img_or_path_or_d
+            )
             d = dict(img=img)
         assert d["img"].shape[:2][::-1] == self.xy
-        if feature_lib is None:
-            feature_lib = getattr(self, "feature_lib")
-            assert feature_lib, "Please set feature_lib or cam.feature_lib"
+        feature_lib = self.get_feature_lib(d, feature_lib)
+
         feature_lib.find_image_points(d)
         if "image_points" in d:
             d.update(self.perspective_n_point(d["image_points"], d["object_points"]))
         return d
 
-    def get_calibration_board_depth(cam, img_or_path_or_d, is_dense=True):
-        d = cam.get_calibration_board_T(img_or_path_or_d)
+    def get_calibration_board_depth(
+        cam, img_or_path_or_d, is_dense=True, feature_lib=None
+    ):
+        d = cam.get_calibration_board_T(img_or_path_or_d, feature_lib=feature_lib)
         object_points = d["object_points"]
         if isinstance(object_points, dict):
             object_points = np.concatenate(list(d["object_points"].values()), 0)
@@ -235,6 +240,19 @@ class Cam(dict):
             )
         d["depth"] = depth_board
         return d
+
+    def get_feature_lib(cam=None, d=None, feature_lib=None):
+        """
+        get right feature_lib form cam, caboard d, or specified  feature_lib
+        feature_lib > d["feature_lib"] > cam.feature_lib
+        """
+        if feature_lib is None:
+            if d and d.get("feature_lib"):
+                feature_lib = d.get("feature_lib")
+            elif hasattr(cam, "feature_lib"):
+                feature_lib = cam.feature_lib
+        assert feature_lib, "Please set feature_lib or cam.feature_lib"
+        return feature_lib
 
     def perspective_n_point(self, image_points, object_points):
         image_points = utils.convert_points_for_cv2(image_points)
@@ -380,7 +398,8 @@ class Cam(dict):
         dic["K"] = intrinsic_format_conversion(dic)
         [dic.pop(k) for k in ("fx", "fy", "cx", "cy")]
         dic["D"] = np.float64(dic["D"])
-        dic["xy"] = tuple(dic["xy"])
+        dic["xy"] = tuple(dic.get("xy", getattr(self, "xy", "")))
+        assert len(dic["xy"]), "Need xy"
         self.__dict__.update(dic)
         if len(self):
             self.update_intrinsic()
