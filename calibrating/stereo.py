@@ -282,14 +282,6 @@ class Stereo:
     def get_max_depth(self):
         return getattr(self, "max_depth", self.MAX_DEPTH)
 
-    def get_calibration_board_T(self, img, feature_lib=None):
-        from calibrating import Cam
-
-        if feature_lib is None:
-            assert hasattr(self.cam1, "feature_lib"), "Please set feature_lib"
-            feature_lib = self.cam1.feature_lib
-        return Cam.get_calibration_board_T(self, img, feature_lib)
-
     @property
     def xy(self):
         return self.cam1.xy
