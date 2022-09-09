@@ -170,7 +170,7 @@ def arr2d_to_uvzs(arr2d, mask=None):
     return uvzs
 
 
-def interpolate_sparse2d(sparse2d, constrained_type=None):
+def interpolate_sparse2d(sparse2d, constrained_type=None, inter_type="lstsq"):
     """
     if constrained_type == True, then only interpolate convexHull area
     """
@@ -180,24 +180,34 @@ def interpolate_sparse2d(sparse2d, constrained_type=None):
     if constrained_type is not None and constrained_type:
         convex_hull = cv2.convexHull(np.int32(uvzs[:, :2].round()))
         cv2.drawContours(input_mask, [convex_hull], -1, 1, -1)
-        input_uvs = arr2d_to_uvzs(input_mask, input_mask)[:, :2]
+        input_uvs = arr2d_to_uvzs(input_mask, input_mask)
     else:
-        input_uvs = arr2d_to_uvzs(input_mask)[:, :2]
+        input_uvs = arr2d_to_uvzs(input_mask)
 
     # TODO replaced by Solving equations of the z = ay+bx+c
     # fit uvzs linearly
-    import scipy.interpolate
+    if inter_type == "rbf":
+        import scipy.interpolate
 
-    spline = scipy.interpolate.Rbf(
-        uvzs[:, 0],
-        uvzs[:, 1],
-        uvzs[:, 2],
-        function="thin_plate",
-        smooth=0.5,
-        episilon=5,
-    )
-    output = spline(input_uvs[:, 0], input_uvs[:, 1],)
-    output_uvzs = np.append(input_uvs, output[:, None], axis=-1)
+        spline = scipy.interpolate.Rbf(
+            uvzs[:, 0],
+            uvzs[:, 1],
+            uvzs[:, 2],
+            function="thin_plate",
+            smooth=0.5,
+            episilon=5,
+        )
+        output = spline(input_uvs[:, 0], input_uvs[:, 1],)
+        output_uvzs = np.append(input_uvs, output[:, None], axis=-1)
+    elif inter_type == "lstsq":
+        A = uvzs.copy()
+        A[:, 2] = 1
+        lstsq_re = np.linalg.lstsq(A, uvzs[:, 2], rcond=None)
+        abc = lstsq_re[0]
+        output_uvzs = np.float32(input_uvs)
+        output_uvzs[:, 2] = 1
+        output_uvzs[:, 2] = output_uvzs @ abc
+
     dense = uvzs_to_arr2d(output_uvzs, sparse2d.shape, arr2d=sparse2d.copy())
     return dense
 
