@@ -46,6 +46,19 @@ class MetaFeatureLib:
             vis = utils.vis_point_uvs(image_points, vis)
         return vis
 
+    def vis_img(self, img_or_path, cam=None):
+        """
+        Direct vis img's feature
+        """
+        if isinstance(img_or_path, dict):
+            d = img_or_path
+        elif isinstance(img_or_path, np.ndarray):
+            d = dict(img=img_or_path)
+        elif isinstance(img_or_path, str):
+            d = dict(img=boxx.imread(img_or_path))
+        self.find_image_points(d)
+        return self.vis(d, cam)
+
     @classmethod
     def build_with_calibration_img(cls, **kwargs):
         # build init_kwargs and calibration_img code
@@ -53,7 +66,6 @@ class MetaFeatureLib:
             "Could go to https://calib.io/pages/camera-calibration-pattern-generator to genearte calibration image"
         )
         self = cls(**init_kwargs)
-        self.init_kwargs = init_kwargs
         self.calibration_img = calibration_img
         self.calibration_img_info = info
         self.calibration_img_name = "xx mm, h*w.png"
@@ -62,6 +74,7 @@ class MetaFeatureLib:
 
 class CheckboardFeatureLib(MetaFeatureLib):
     def __init__(self, checkboard=(11, 8), size_mm=25):
+        self.init_kwargs = dict(checkboard=checkboard, size_mm=size_mm)
         self.checkboard = checkboard
         self.size_mm = size_mm
         self.object_points = np.zeros(
@@ -223,6 +236,12 @@ class CharucoFeatureLib(MetaFeatureLib):
         marker_size_mm=22.475,
         aruco_dict_tag=None,
     ):
+        self.init_kwargs = dict(
+            square_xy=square_xy,
+            square_size_mm=square_size_mm,
+            marker_size_mm=marker_size_mm,
+            aruco_dict_tag=aruco_dict_tag,
+        )
         self.square_xy = square_xy
         if aruco_dict_tag is None:
             aruco_dict_tag = cv2.aruco.DICT_4X4_250
@@ -284,7 +303,6 @@ class CharucoFeatureLib(MetaFeatureLib):
         )
 
         self = cls(**init_kwargs)
-        self.init_kwargs = init_kwargs
         self.calibration_img = cv2.cvtColor(
             self.board.draw(hw[::-1]), cv2.COLOR_GRAY2RGB
         )
@@ -308,6 +326,7 @@ if __name__ == "__main__":
     feature_lib = CharucoFeatureLib.build_with_calibration_img(
         aruco_dict_tag="DICT_4X4_250_start50"
     )
+    boxx.tree(feature_lib.init_kwargs)
     calibration_img = img = feature_lib.calibration_img
     # clip to 100 for printer to use less black ink
     boxx.imsave(f"/tmp/{feature_lib.calibration_img_name}", calibration_img.clip(100,))

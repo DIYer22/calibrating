@@ -35,6 +35,37 @@ def T_to_r_t(T):
     return rvec, tvec
 
 
+def R_to_deg(r_R_T):
+    if r_R_T.size == 3:
+        r = r_R_T
+    elif r_R_T.size >= 9:
+        r = T_to_r(r_R_T).squeeze()
+    deg = np.linalg.norm(r) * 180 / np.pi
+    return deg
+
+
+def T_to_deg_distance(T, compare_T=None):
+    """
+    Translate the T matrix into items that humans can intuitively understand, 
+    such as degrees of rotation and displacement distances
+    Set compare_T to compare the difference between two Ts
+
+    Returns
+    -------
+    └── /: dict  4
+        ├── deg: 45.2°
+        ├── distance: 0.2 m
+        ├── r: (3, 1)float64
+        └── t: (3, 1)float64
+    """
+    if compare_T is not None:
+        T = np.linalg.inv(compare_T) @ T
+    r, t = T_to_r_t(T)
+    deg = R_to_deg(r)
+    distance = np.linalg.norm(t)
+    return dict(deg=deg, distance=distance, r=r, t=t)
+
+
 def convert_points_for_cv2(dic_or_np):
     point = dic_or_np
     if isinstance(point, dict):
@@ -323,13 +354,25 @@ def vis_point_uvs(
     return vis
 
 
+def _get_vis_background_of_cam(cam):
+    # vis = np.ones(list(cam.xy[::-1]) + [3], np.uint8) * 128
+    ys, xs = np.mgrid[: cam.xy[1], : cam.xy[0]]
+    bg = (
+        ((ys - cam.xy[1] / 2) ** 2 + (xs - cam.xy[0] / 2) ** 2 + 1e-6) ** 0.5
+        / (np.mean(cam.xy) / 2 / 5)
+        % 1
+    )
+    bg = cv2.cvtColor(boxx.uint8(bg) // 4 + 63, cv2.COLOR_GRAY2RGB)
+    return bg
+
+
 def vis_T(T, cam=None, img=None, length=0.1):
     if cam is None:
         from calibrating import Cam
 
         cam = Cam.get_example_720p()
     if img is None:
-        vis = np.ones(list(cam.xy[::-1]) + [3], np.uint8) * 128
+        vis = _get_vis_background_of_cam(cam)
     else:
         vis = img.copy()
     rvec, tvec = T_to_r_t(T)
