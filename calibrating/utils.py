@@ -9,7 +9,9 @@ from glob import glob
 from boxx import imread, shows, show, showb
 
 
-def R_t_to_T(R, t):
+def R_t_to_T(R, t=None):
+    if t is None:
+        t = np.zeros((3,))
     T = np.zeros((4, 4))
     T[:3, :3] = R
     T[:3, -1] = t.squeeze()
@@ -17,9 +19,10 @@ def R_t_to_T(R, t):
     return T
 
 
-def r_t_to_T(r, t):
+def r_t_to_T(r, t=None):
+    r = np.array(r)
     assert r.size == 3
-    return R_t_to_T(cv2.Rodrigues(r.squeeze())[0], t.squeeze())
+    return R_t_to_T(cv2.Rodrigues(r.squeeze())[0], t)
 
 
 def T_to_r(T):
@@ -312,8 +315,8 @@ def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True):
         valid_num = mask_valid.sum()
         if valid_num:
             k = int(-max_l1 * valid_num)
-            k = max(k, 1)
-            overexposed_l1 = -np.partition(-abs_l1[mask_valid], k)[:k]
+            k = max(k, 0)
+            overexposed_l1 = -np.partition(-abs_l1[mask_valid], k)[: k + 1]
             max_l1 = overexposed_l1.min()
         else:
             max_l1 = 1.0
@@ -381,6 +384,7 @@ def vis_point_uvs(
 
 
 def _get_vis_background_of_cam(cam):
+    # New idea different size boxes in 1m to project on cam's image with K
     # vis = np.ones(list(cam.xy[::-1]) + [3], np.uint8) * 128
     ys, xs = np.mgrid[: cam.xy[1], : cam.xy[0]]
     bg = (

@@ -230,6 +230,9 @@ class Cam(dict):
         cam, img_or_path_or_d, is_dense=True, feature_lib=None
     ):
         d = cam.get_calibration_board_T(img_or_path_or_d, feature_lib=feature_lib)
+        if "object_points" not in d:
+            d["depth"] = np.zeros(cam.xy[::-1])
+            return d
         object_points = d["object_points"]
         if isinstance(object_points, dict):
             object_points = np.concatenate(list(d["object_points"].values()), 0)
@@ -312,9 +315,7 @@ class Cam(dict):
         return utils.vis_align(img, depth_vis)
 
     def vis_image_points_cover(self):
-        # all_image_points = np.concatenate(self._get_points_for_cv2())
-        # vis = utils.vis_point_uvs(all_image_points, self.xy[::-1])
-        vis = self.xy[::-1]
+        vis = utils._get_vis_background_of_cam(self)
         for uvs in self._get_points_for_cv2():
             vis = utils.vis_point_uvs(uvs, vis, convex_hull=True)
 
