@@ -104,15 +104,16 @@ class CheckboardFeatureLib(MetaFeatureLib):
         if cam is not None and "T" in d:
             vis = utils.vis_T(d["T"], cam, vis)
         h, w = vis.shape[:2]
-        draw_subpix = h < 1500
-        if draw_subpix:
-            sub_size = 2
-            vis = cv2.resize(vis, (w * sub_size, h * sub_size))
-            cv2.drawChessboardCorners(
-                vis, self.checkboard, d["corners"] * sub_size, True
-            )
-        else:
-            cv2.drawChessboardCorners(vis, self.checkboard, d["corners"], True)
+        if "corners" in d:
+            draw_subpix = max(h, w) < 800
+            if draw_subpix:
+                sub_size = 2
+                vis = cv2.resize(vis, (w * sub_size, h * sub_size))
+                cv2.drawChessboardCorners(
+                    vis, self.checkboard, d["corners"] * sub_size, True
+                )
+            else:
+                cv2.drawChessboardCorners(vis, self.checkboard, d["corners"], True)
         return vis
 
     @classmethod
@@ -235,12 +236,14 @@ class CharucoFeatureLib(MetaFeatureLib):
         square_size_mm=44.95,
         marker_size_mm=22.475,
         aruco_dict_tag=None,
+        using_marker_corner=False,
     ):
         self.init_kwargs = dict(
             square_xy=square_xy,
             square_size_mm=square_size_mm,
             marker_size_mm=marker_size_mm,
             aruco_dict_tag=aruco_dict_tag,
+            using_marker_corner=using_marker_corner,
         )
         self.square_xy = square_xy
         if aruco_dict_tag is None:
@@ -268,24 +271,48 @@ class CharucoFeatureLib(MetaFeatureLib):
             ret, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
                 marker_corners, marker_ids, img, self.board
             )
-            if charuco_ids is not None and len(charuco_ids) >= 11:  # 4
-                d["ids"] = charuco_ids[:, 0]
-                d["image_points"] = dict(zip(d["ids"], charuco_corners))
-                d["object_points"] = {
-                    id: self.board.chessboardCorners[id][None] for id in d["ids"]
+            if charuco_ids is not None:
+                ids = charuco_ids[:, 0]
+                image_points = dict(zip(ids, charuco_corners))
+                object_points = {
+                    id: self.board.chessboardCorners[id][None] for id in ids
                 }
-                d["corners"] = charuco_corners
+                # image_points, object_points = {}, {}
+                if self.init_kwargs.get("using_marker_corner"):
+                    marker_ids = marker_ids.squeeze()
+                    image_points.update(
+                        {
+                            -1 - i: marker_corner[0]
+                            for i, marker_corner in zip(marker_ids, marker_corners)
+                            if i < len(self.board.objPoints)
+                        }
+                    )
+                    object_points.update(
+                        {
+                            -1 - i: self.board.objPoints[i]
+                            for i in marker_ids
+                            if i < len(self.board.objPoints)
+                        }
+                    )
+                if len(image_points) >= 11:  # 4
+                    d.update(
+                        ids=ids,
+                        image_points=image_points,
+                        object_points=object_points,
+                        corners=charuco_corners,
+                    )
 
     def vis(self, d, cam=None):
         vis = super().vis(d, cam)
+        if d.get("marker_ids") is not None:
+            cv2.aruco.drawDetectedMarkers(vis, d["marker_corners"], d["marker_ids"])
         if d.get("ids") is not None:
             cv2.aruco.drawDetectedCornersCharuco(vis, d["corners"], d["ids"])
-            cv2.aruco.drawDetectedMarkers(vis, d["marker_corners"], d["marker_ids"])
         return vis
 
     @classmethod
     def build_with_calibration_img(
-        cls, hw=A4.hw, n=10, ppi=A4.ppi, aruco_dict_tag=None
+        cls, hw=A4.hw, n=10, ppi=A4.ppi, aruco_dict_tag=None, **init_kwargs
     ):
         height, width = hw
         size = max(hw) // (n)
@@ -295,7 +322,7 @@ class CharucoFeatureLib(MetaFeatureLib):
         wn = int((width) / size)
 
         square_xy = (wn, hn)
-        init_kwargs = dict(
+        init_kwargs.update(
             square_xy=square_xy,
             square_size_mm=size_mm,
             marker_size_mm=size_mm * 0.75,
