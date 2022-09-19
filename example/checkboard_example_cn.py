@@ -25,6 +25,15 @@ feature_lib = calibrating.CheckboardFeatureLib(checkboard=(7, 10), size_mm=22.56
 caml = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_l.jpg"), feature_lib)
 camr = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_r.jpg"), feature_lib)
 camd = calibrating.Cam(glob(f"{checkboard_img_dir}/*/depth_cam_color.jpg"), feature_lib)
+built_in_intrinsics = dict(
+    fx=1474.1182177692722,
+    fy=1474.125874583105,
+    cx=1037.599716850734,
+    cy=758.3072639103259,
+)
+# depth 需要与深度相机的内置的内参成对使用
+camd.load(built_in_intrinsics)
+
 print(caml, camr, camd)
 # 用浏览器可视化在相机视野中每一块标定板的 image_point 和 Rt
 shows([cam.vis_image_points_cover() for cam in (caml, camr, camd)])

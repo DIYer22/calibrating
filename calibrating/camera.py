@@ -500,6 +500,14 @@ class Cam(dict):
             undistorted=True,
             enable_cache=True,
         )
+        built_in_intrinsics = dict(
+            fx=1474.1182177692722,
+            fy=1474.125874583105,
+            cx=1037.599716850734,
+            cy=758.3072639103259,
+        )
+        # depth need to be used in pairs with camera's built-in intrinsics
+        camd.load(built_in_intrinsics)
         return caml, camr, camd
 
     @classmethod
