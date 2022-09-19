@@ -497,7 +497,6 @@ class Cam(dict):
             glob(os.path.join(root, "*", "depth_cam_color.jpg")),
             feature_lib,
             name="depth",
-            undistorted=True,
             enable_cache=True,
         )
         built_in_intrinsics = dict(

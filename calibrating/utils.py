@@ -483,7 +483,6 @@ def get_test_cams(feature_type="checkboard"):
             glob(os.path.join(root, "*", "depth_cam_color.jpg")),
             feature_lib,
             name="camd",
-            undistorted=True,
             enable_cache=True,
         )
         built_in_intrinsics = dict(
