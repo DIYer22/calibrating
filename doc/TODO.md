@@ -41,7 +41,7 @@
     - [x] cam 支持预定义内参 K, D
     - [x] dumap and load yaml of KD
 - [x] support Occlusion for external parameters(支持被遮挡的 marker)
-- [x] `aruco` 的 `caml.vis_project_align(imgl, depthl)` 存在轻微没对齐
+- [x] `aruco` 的 `caml.vis_depth_alignment(imgl, depthl)` 存在轻微没对齐
     - 结论: 本来 depthd 在标定板边缘就有深度缺失
     - 结论2: 用梅卡的内参反而不准了
 - [x] Stereo different intrinsic cams
