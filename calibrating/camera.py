@@ -295,12 +295,9 @@ class Cam(dict):
     def project_cam2_depth(cam1, cam2, depth2, T=None, interpolation=1.5):
         if T is None:
             T = cam1.get_T_cam2_in_self(cam2)
-        if interpolation:
-            interpolation_rate = cam1.K[0, 0] / cam2.K[0, 0] * interpolation
-            if interpolation >= 1:
-                interpolation_rate = max(interpolation_rate, 1)
-        else:
-            interpolation_rate = 1
+        interpolation_rate = utils._get_appropriate_interpolation_rate(
+            cam1, cam2, interpolation
+        )
         point_cloud2 = utils.depth_to_point_cloud(
             depth2, cam2.K, interpolation_rate=interpolation_rate
         )
@@ -318,6 +315,28 @@ class Cam(dict):
         depth_uint8 = np.uint8(depth / depth.max() * 255)
         depth_vis = np.uint8(cv2.applyColorMap(depth_uint8, cv2.COLORMAP_JET) * 0.75)
         return utils.vis_align(img, depth_vis)
+
+    def vis_reproject_img_alignment(cam1, cam2, depth2, img2, img1, interpolation=1.5):
+        """
+        Visualize alignment of undistorted_img1 and reproject_img from img2
+        Note: img is raw img file without undistort
+        """
+        undistorted_img1 = cv2.undistort(img1, cam1.K, cam1.D)
+        assert not cam2.D.any(), f"cam2.D has distort: {cam2.D}"
+        T_2in1 = cam1.get_T_cam2_in_self(cam2)
+        interpolation_rate = utils._get_appropriate_interpolation_rate(
+            cam1, cam2, interpolation
+        )
+        mapx, mapy = utils.get_reproject_remap(
+            cam1.K,
+            cam2.K,
+            T_2in1,
+            depth2,
+            cam1.xy,
+            interpolation_rate=interpolation_rate,
+        )
+        reproject_img = cv2.remap(img2, mapx, mapy, cv2.INTER_LINEAR)
+        return utils.vis_align(undistorted_img1, reproject_img)
 
     def vis_image_points_cover(self):
         vis = utils._get_vis_background_of_cam(self)
@@ -600,6 +619,7 @@ if __name__ == "__main__":
     from boxx import *
 
     caml, camr, camd = Cam.get_test_cams()
+    # caml, camr, camd = utils.get_test_cams("aruco").values()
     print(Cam.load(camd.dump()))
 
     stereo = Stereo(caml, camr)
@@ -609,11 +629,11 @@ if __name__ == "__main__":
     key = caml.valid_keys_intersection(camd)[0]
     imgl = imread(caml[key]["path"])
     color_path_d = camd[key]["path"]
+    imgd = imread(color_path_d)
     depthd = imread(color_path_d.replace("color.jpg", "depth.png"))
     depthd = np.float32(depthd / 1000)
 
+    caml.vis_reproject_img_alignment(camd, depthd, imgd, imgl)
+
     depthl = caml.project_cam2_depth(camd, depthd, T_camd_in_caml)
     caml.vis_depth_alignment(imgl, depthl)
-    # shows(depthd, depthd_cycle)
-
-    caml.vis_project_align(imgl, depthl)

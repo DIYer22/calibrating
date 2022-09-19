@@ -32,7 +32,7 @@ if __name__ == "__main__":
     T_camd_in_caml = caml.get_T_cam2_in_self(camd)
     with boxx.timeit("project_cam2_depth"):
         depthl = caml.project_cam2_depth(camd, depthd, T_camd_in_caml)
-        caml.vis_project_align(imgl, depthl)
+        caml.vis_depth_alignment(imgl, depthl)
     stereo = Stereo(caml, camr)
 
     stereo2 = Stereo.load(stereo.dump(return_dict=1))

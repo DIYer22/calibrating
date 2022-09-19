@@ -77,9 +77,15 @@ def convert_points_for_cv2(dic_or_np):
 
 
 def apply_T_to_point_cloud(T, point_cloud):
-    new_point_cloud = np.ones((len(point_cloud), 4))
-    new_point_cloud[:, :3] = point_cloud
-    return (T @ new_point_cloud.T).T[:, :3]
+    """
+    point_cloud's shape is N * [x, y, z] or N * [x, y, z, ....]
+    """
+    point_cloud_n4 = np.ones((len(point_cloud), 4))
+    point_cloud_n4[:, :3] = point_cloud[:, :3]
+    new_point_cloud = (T @ point_cloud_n4.T).T[:, :3]
+    if point_cloud.shape[1] > 3:
+        new_point_cloud = np.concatenate((new_point_cloud, point_cloud[:, 3:]), -1)
+    return new_point_cloud
 
 
 def rotate_depth_by_point_cloud(K, R, depth, interpolation_rate=1):
@@ -106,7 +112,17 @@ def rotate_depth_by_remap(K, R, depth, maps=None):
     return dict(depth=new_depth, R=R, maps=maps)
 
 
-def depth_to_point_cloud(depth, K, interpolation_rate=1):
+def _get_appropriate_interpolation_rate(cam1, cam2, interpolation=1.5):
+    if interpolation:
+        interpolation_rate = cam1.K[0, 0] / cam2.K[0, 0] * interpolation
+        if interpolation >= 1:
+            interpolation_rate = max(interpolation_rate, 1)
+    else:
+        interpolation_rate = 1
+    return interpolation_rate
+
+
+def depth_to_point_cloud(depth, K, interpolation_rate=1, return_xyzuv=False):
     # depth to point cloud
     # K@Ps/z=xy
     assert depth.ndim == 2
@@ -114,44 +130,63 @@ def depth_to_point_cloud(depth, K, interpolation_rate=1):
     if depth.dtype == np.uint16:
         depth = np.float32(depth / 1000.0)
     if interpolation_rate == 1:
-        ys, xs = np.mgrid[
-            :y, :x,
-        ]
+        mask = depth != 0
+        vs, us = np.mgrid[:y, :x,][:, mask]
 
-        points = (np.array([xs, ys, np.ones_like(xs)]) * depth[None])[:, depth != 0].T
+        # points = (np.array([xs, ys, np.ones_like(xs)]) * depth[None])[:, depth != 0].T
+        points = (np.array([us, vs, np.ones_like(us)]) * depth[mask]).T
+
     else:
         y_, x_ = int(round(y * interpolation_rate)), int(round(x * interpolation_rate))
         depth_ = cv2.resize(depth, (x_, y_), interpolation=cv2.INTER_NEAREST)
-        ys, xs = np.mgrid[
-            :y_, :x_,
-        ]
-        points = (np.array([xs, ys, np.ones_like(xs)]) * depth_[None])[:, depth_ != 0].T
-        points[:, 0] /= interpolation_rate
-        points[:, 1] /= interpolation_rate
+        mask = depth_ != 0
+        vs, us = np.mgrid[:y_, :x_,][:, mask] / interpolation_rate
+        points = (np.array([us, vs, np.ones_like(us)]) * depth_[mask]).T
 
     point_cloud = (np.linalg.inv(K) @ points.T).T
+    if return_xyzuv:
+        xyzuvs = np.concatenate([point_cloud, us[:, None], vs[:, None]], -1)
+        return xyzuvs
     return point_cloud
 
 
 def point_cloud_to_depth(points, K, xy):
+    return point_cloud_to_arr2d(points, K, xy)
+
+
+def point_cloud_to_arr2d(points, K, xy, values=None, bg_value=0):
     xyzs = (K @ points.T).T
     xyzs[:, :2] /= xyzs[:, 2:]
     sorted_idx = np.argsort(-xyzs[:, 2])
-    xyzs = xyzs[sorted_idx]
-    return uvzs_to_arr2d(xyzs, xy[::-1])
+    xyzs_sorted = xyzs[sorted_idx]
+    if values is None:
+        return uvzs_to_arr2d(xyzs_sorted, hw=xy[::-1], bg_value=bg_value)
+    else:
+        values_sorted = values[sorted_idx]
+        return uvzs_to_arr2d(
+            xyzs_sorted, hw=xy[::-1], values=values_sorted, bg_value=bg_value
+        )
 
 
-def uvzs_to_arr2d(uvzs, hw=None, bg_value=0, arr2d=None):
+def uvzs_to_arr2d(uvs, hw=None, bg_value=0, arr2d=None, values=None):
+    if values is None:
+        uvs, values = uvs[:, :2], uvs[:, 2:]
+    if values.ndim == 1:
+        values = values[:, None]
     if arr2d is None:
         if hw is None:
-            hw = np.int32(uvzs.max(0)[:2].round()) + 1
-        arr2d = np.ones(hw, uvzs.dtype) * bg_value
+            hw = np.int32(uvs.max(0)[:2].round()) + 1
+        if values.shape[1] >= 2:
+            hw = tuple(hw) + (values.shape[1],)
+        arr2d = np.ones(hw, values.dtype) * bg_value
     else:
         hw = arr2d.shape[:2]
 
-    xs, ys = np.int32(uvzs[:, :2].round()).T
+    xs, ys = np.int32(uvs[:, :2].round()).T
     mask = (xs >= 0) & (xs < hw[1]) & (ys >= 0) & (ys < hw[0])
-    arr2d[ys[mask], xs[mask]] = uvzs[:, 2][mask]
+    arr2d[ys[mask], xs[mask]] = (
+        values[mask] if values.shape[1] >= 2 else values[mask][:, 0]
+    )
     return arr2d
 
 
@@ -171,6 +206,21 @@ def arr2d_to_uvzs(arr2d, mask=None):
             mask = np.bool8(mask)
         uvzs = np.array([xs[mask], ys[mask], arr2d[mask]]).T
     return uvzs
+
+
+def get_reproject_remap(K1, K2, T_2in1, depth2, xy1, interpolation_rate=1):
+    """
+    get reproject remap of cam2 to cam1
+    """
+    xyzuvs2 = depth_to_point_cloud(
+        depth2, K2, interpolation_rate=interpolation_rate, return_xyzuv=True
+    )
+    xyzs2, uvs = xyzuvs2[:, :3], np.float32(xyzuvs2[:, 3:])
+    xyzs1 = apply_T_to_point_cloud(T_2in1, xyzs2)
+    reproject_remap = point_cloud_to_arr2d(
+        xyzs1, K1, xy=xy1, values=uvs, bg_value=-1
+    ).transpose(2, 0, 1)
+    return reproject_remap
 
 
 def interpolate_sparse2d(sparse2d, constrained_type=None, inter_type="lstsq"):
