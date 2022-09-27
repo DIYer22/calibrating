@@ -570,6 +570,7 @@ class Cam(dict):
                 cam_[k]["feature_lib"] = feature_lib
                 self[k + "~" + name] = cam_[k]
         self.calibrate()
+        self.feature_libs = feature_libs
         return self
 
 
