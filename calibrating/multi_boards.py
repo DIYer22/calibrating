@@ -8,7 +8,7 @@ from functools import wraps
 with boxx.inpkg():
     from .camera import Cam
     from .utils import mean_Ts
-    from .reconstruction import convert_cam_to_instant_ngp_json
+    from .reconstruction import convert_cam_to_nerf_json
 
 
 class MultiBoardsCam(Cam):
@@ -67,8 +67,8 @@ class MultiBoardsCam(Cam):
             }
         return board_name_to_T_world
 
-    @wraps(convert_cam_to_instant_ngp_json)
-    def convert_to_instant_ngp_json(self, *args, **argkws):
+    @wraps(convert_cam_to_nerf_json)
+    def convert_to_nerf_json(self, *args, **argkws):
         boards = self.feature_libs
         board_name_to_T_world = self.get_board_name_to_T_world(True)
         board_name_to_img_names = defaultdict(lambda: {})
@@ -93,7 +93,7 @@ class MultiBoardsCam(Cam):
 
         cam_new = self.copy()
         cam_new.update(ds_new)
-        convert_cam_to_instant_ngp_json(cam_new, *args, **argkws)
+        convert_cam_to_nerf_json(cam_new, *args, **argkws)
 
 
 if __name__ == "__main__":
@@ -101,6 +101,7 @@ if __name__ == "__main__":
     import calibrating
     from calibrating import Cam, A3, A4, CharucoFeatureLib
 
+    # prepare boards
     n = 12
     marker_names = [f"DICT_4X4_1000_start{i*(n**2+1)//2}" for i in [0, 1, 2, 3, 4]]
     printer = calibrating.PredefPrinter(
@@ -117,11 +118,9 @@ if __name__ == "__main__":
         boards[name] = board
         calibration_imgs.append(board.calibration_img)
 
-    cam = MultiBoardsCam(
-        sorted(boxx.glob(f"{img_dir}/*left.jpg")),
-        boards,
-        name="multi_board",
-        save_feature_vis=0,
+    boards_cam = MultiBoardsCam(
+        sorted(boxx.glob(f"{img_dir}/*left.jpg")), boards, name="boards_cam",
     )
 
-    cam.convert_to_instant_ngp_json(f"{img_dir}/instant-ngp.json.json")
+    # Test convert boards_cam to NeRF.json
+    boards_cam.convert_to_nerf_json(f"{img_dir}/instant-ngp.json.json")

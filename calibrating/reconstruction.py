@@ -12,7 +12,7 @@ def get_sharpness(image):
     return sharpness
 
 
-def convert_cam_to_instant_ngp_json(
+def convert_cam_to_nerf_json(
     cam,
     json_path=None,
     target_scale=None,
@@ -91,5 +91,5 @@ if __name__ == "__main__":
 
     cam = Cam(sorted(boxx.glob(glob_path)), feature_lib,)
     jsp = recon_dir + "/transforms.json"
-    convert_cam_to_instant_ngp_json(cam, json_path=jsp, basename=True, target_scale=2.5)
+    convert_cam_to_nerf_json(cam, json_path=jsp, basename=True, target_scale=2.5)
     print("Save to:", jsp)

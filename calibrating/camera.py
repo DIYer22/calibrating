@@ -14,11 +14,12 @@ from glob import glob
 from tqdm import tqdm
 
 with boxx.inpkg():
-    from .feature_libs import CheckboardFeatureLib, MetaFeatureLib
-    from .stereo import Stereo
-    from .utils import r_t_to_T, intrinsic_format_conversion
     from . import utils
+    from .stereo import Stereo
     from .__info__ import __version__
+    from .utils import r_t_to_T, intrinsic_format_conversion
+    from .reconstruction import convert_cam_to_nerf_json
+    from .feature_libs import CheckboardFeatureLib, MetaFeatureLib
 
 TEMP = __import__("tempfile").gettempdir()
 
@@ -442,6 +443,8 @@ class Cam(dict):
                 d.update(
                     self.perspective_n_point(d["image_points"], d["object_points"],)
                 )
+
+    convert_to_nerf_json = convert_cam_to_nerf_json
 
     def copy(self):
         new = type(self)()
