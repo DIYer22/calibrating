@@ -85,9 +85,7 @@ Convert to NeRF format json for 3D reconstruction, example:
 #   - should fix the calibration board and object, and move the camera
 cam.convert_to_nerf_json("nerf_instant-ngp_transforms.json")
 ```
-<img alt="image" src="https://user-images.githubusercontent.com/10448025/192988171-40d51b15-e761-4fe6-9df4-0e2b509a79ec.png" width="400">  
-<img alt="instant ngp" src="https://user-images.githubusercontent.com/10448025/192993202-84ccab21-1f9d-4b3c-8dc7-090c121bb84e.jpg" width="400">   
-  
+<img alt="image" src="https://user-images.githubusercontent.com/10448025/192988171-40d51b15-e761-4fe6-9df4-0e2b509a79ec.png" width="400"> <img alt="instant ngp" src="https://user-images.githubusercontent.com/10448025/192993202-84ccab21-1f9d-4b3c-8dc7-090c121bb84e.jpg" width="400">     
 *Reconstruction effect of [instat-ngp](https://github.com/NVlabs/instant-ngp)*
 
 
@@ -97,7 +95,7 @@ Multiple calibration boards in one image, run [example code](calibrating/multi_b
 python calibrating/multi_boards.py
 ```
 
-<img alt="14~DICT_4X4_1000_start0" src="https://user-images.githubusercontent.com/10448025/192990507-4d3ba606-e480-428b-a021-5b439a1c7781.jpg" width="400">  
+<img alt="14~DICT_4X4_1000_start0" src="https://user-images.githubusercontent.com/10448025/192990507-4d3ba606-e480-428b-a021-5b439a1c7781.jpg" width="400">     
 
 *visualization example of multiple boards*
 
