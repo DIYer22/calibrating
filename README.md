@@ -13,9 +13,10 @@ Calibrate camera's intrinsic/extristric, and build stereo depth camera with Open
 - Mature [stereo module](calibrating/stereo.py) for correctly converting disparity to depth map that aligned with the left camera
 - Provide camera internal and external parameters standard, which can be exported as `.yaml`
 - Decoupling the feature extraction and calibration process, support both checkboard and markers(`cv2.aruco`)
-- Support [occluded markers](example/test_occlude_marker.py) like [ArUco](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html) and [ChArUco](https://docs.opencv.org/4.6.0/df/d4a/tutorial_charuco_detection.html)
+- Support [occluded markers](example/test_occlude_marker.py) like [ArUco](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html) and [ChArUco](https://docs.opencv.org/4.6.0/df/d4a/tutorial_charuco_detection.html), and multiple calibration boards in one image
 - Draw various calibration board images
 - Automatically ignore non-compliant images or markers
+- Convert to NeRF format json for 3D reconstruction
 
 ## ▮ Install
 ```bash
@@ -75,5 +76,28 @@ flowchart
         unrectify --> stereo_re("Output:　　　　\n undistort_img1 \n unrectify_depth")
     end
 ```
+## ▮ 3D reconstruction
+Convert to NeRF format json for 3D reconstruction, example:
+```python
+# Convert Cam object's intrinsic/extristric to NeRF fromat json
+# Note: 
+#   - When collecting images for reconstruction
+#   - should fix the calibration board and object, and move the camera
+cam.convert_to_nerf_json("nerf_instant-ngp_transforms.json")
+```
+<img alt="image" src="https://user-images.githubusercontent.com/10448025/192988171-40d51b15-e761-4fe6-9df4-0e2b509a79ec.png" width="400">  
+<img alt="instant ngp" src="https://user-images.githubusercontent.com/10448025/192993202-84ccab21-1f9d-4b3c-8dc7-090c121bb84e.jpg" width="400">   
+  
+*Reconstruction effect of [instat-ngp](https://github.com/NVlabs/instant-ngp)*
 
+
+## ▮ Multiple Boards
+Multiple calibration boards in one image, run [example code](calibrating/multi_boards.py):
+```bash
+python calibrating/multi_boards.py
+```
+
+<img alt="14~DICT_4X4_1000_start0" src="https://user-images.githubusercontent.com/10448025/192990507-4d3ba606-e480-428b-a021-5b439a1c7781.jpg" width="400">  
+
+*visualization example of multiple boards*
 
