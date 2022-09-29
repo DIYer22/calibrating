@@ -28,6 +28,11 @@
     - 以 stereoCalibrate 为准
 
 ## TODO list
+- [ ] 新的科学的测试数据
+    - 拍平文件夹, 方便查看
+    - 有 multi board example, for reconstruction
+    - 讲清楚棋盘格的缺点, 旋转对称, 遮挡, 求 feature 慢
+- [ ] rename feature_lib => board
 - [ ] cam.rotate 考虑畸变
 - [ ] 更完善的代码文档, 尤其是 d 和 MetaFeatureLib
 - [ ] 自动测试用例

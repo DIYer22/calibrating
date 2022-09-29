@@ -6,3 +6,4 @@ from .camera import *
 from .stereo import *
 from .feature_libs import *
 from .reconstruction import *
+from .multi_boards import *

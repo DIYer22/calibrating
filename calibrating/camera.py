@@ -556,23 +556,6 @@ class Cam(dict):
         self.xy = xy
         return self
 
-    @classmethod
-    def build_with_multi_feature_libs(cls, imgps, feature_libs, **kwargs):
-        self = cls(**kwargs)
-        if not isinstance(feature_libs, dict):
-            feature_libs = dict([(str(i), v) for i, v in enumerate(feature_libs)])
-        kwargs["save_feature_vis"] = False
-        for name in feature_libs:
-            kwargs["name"] = self.name + "~cam_~" + name
-            feature_lib = feature_libs[name]
-            cam_ = cls(imgps, feature_lib=feature_lib, **kwargs)
-            for k in cam_:
-                cam_[k]["feature_lib"] = feature_lib
-                self[k + "~" + name] = cam_[k]
-        self.calibrate()
-        self.feature_libs = feature_libs
-        return self
-
 
 class Cams(list):
     """

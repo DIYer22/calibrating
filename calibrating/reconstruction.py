@@ -6,6 +6,12 @@ with boxx.inpkg():
     from . import utils
 
 
+def get_sharpness(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    sharpness = cv2.Laplacian(gray, cv2.CV_64F).var()
+    return sharpness
+
+
 def convert_cam_to_instant_ngp_json(
     cam,
     json_path=None,
@@ -14,12 +20,9 @@ def convert_cam_to_instant_ngp_json(
     sharpness=True,
     basename=False,
     rotate_z_as_up=True,
+    coordinate_type="nerf",
 ):
-    def get_sharpness(image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        sharpness = cv2.Laplacian(gray, cv2.CV_64F).var()
-        return sharpness
-
+    assert coordinate_type in ("opencv", "nerf")
     nerf_json = dict(
         fl_x=cam.fx,
         fl_y=cam.fy,
@@ -29,22 +32,28 @@ def convert_cam_to_instant_ngp_json(
         h=cam.xy[1],
         camera_angle_x=cam.fovs["fovx"] * np.pi / 180,
         camera_angle_y=cam.fovs["fovy"] * np.pi / 180,
+        coordinate_type=coordinate_type,
     )
     distort = dict(zip("k1 k2 p1 p2".split(), cam.D[0, :4]))
     nerf_json.update(distort)
     nerf_json["frames"] = []
     for key, d in cam.items():
-        # Refrence https://github.com/NVlabs/instant-ngp/blob/25dec33c253f035485bb2e1f8563e12ef3134e8b/scripts/colmap2nerf.py#L287
-        T_cam_to_word = np.linalg.inv(d["T"])
-        cv_to_nerf = np.array(
-            [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
-        )
-        T_nerf = T_cam_to_word @ cv_to_nerf
-        if rotate_z_as_up:
-            T_nerf = utils.r_t_to_T([np.pi, 0, 0],) @ T_nerf
+        if "T_cam_in_world" in d:
+            T_cam_in_world = d["T_cam_in_world"]
+        else:
+            T_cam_in_world = np.linalg.inv(d["T"])
+
+        if coordinate_type == "nerf":
+            # Refrence https://github.com/NVlabs/instant-ngp/blob/25dec33c253f035485bb2e1f8563e12ef3134e8b/scripts/colmap2nerf.py#L287
+            cv_to_nerf = np.array(
+                [[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
+            )
+            T_cam_in_world = T_cam_in_world @ cv_to_nerf
+            if rotate_z_as_up:
+                T_cam_in_world = utils.r_t_to_T([np.pi, 0, 0],) @ T_cam_in_world
         dic = dict(
             file_path=boxx.basename(d["path"]) if basename else d["path"],
-            transform_matrix=T_nerf,
+            transform_matrix=T_cam_in_world,
         )
         if sharpness:
             img = boxx.imread(d["path"])
