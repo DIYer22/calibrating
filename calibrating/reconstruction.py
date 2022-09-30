@@ -15,7 +15,7 @@ def get_sharpness(image):
 def convert_cam_to_nerf_json(
     cam,
     json_path=None,
-    target_scale=None,
+    target_scale=None,  # 1~5m, recommend 2m
     aabb_scale=4,
     sharpness=True,
     basename=False,
@@ -38,6 +38,8 @@ def convert_cam_to_nerf_json(
     nerf_json.update(distort)
     nerf_json["frames"] = []
     for key, d in cam.items():
+        if "T" not in d:
+            continue
         if "T_cam_in_world" in d:
             T_cam_in_world = d["T_cam_in_world"]
         else:

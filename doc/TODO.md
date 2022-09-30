@@ -32,6 +32,9 @@
     - 拍平文件夹, 方便查看
     - 有 multi board example, for reconstruction
     - 讲清楚棋盘格的缺点, 旋转对称, 遮挡, 求 feature 慢
+- [ ] 智能提示:
+    - 根据标定板 Ts 的丰富程度(Ts 和 meanT 的 R 分布大)和 image point 覆盖程度智能提示
+    - vis_image_points_cover 添加 assert 和 warnning, 及开关
 - [ ] rename feature_lib => board
 - [ ] cam.rotate 考虑畸变
 - [ ] 更完善的代码文档, 尤其是 d 和 MetaFeatureLib

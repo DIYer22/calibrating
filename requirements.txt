@@ -1,4 +1,4 @@
 boxx>=0.10.6
-opencv-contrib-python
+opencv-contrib-python>=4.6.0
 tqdm
 pyyaml

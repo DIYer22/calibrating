@@ -110,20 +110,17 @@ if __name__ == "__main__":
     # prepare boards
     n = 12
     marker_names = [f"DICT_4X4_1000_start{i*(n**2+1)//2}" for i in [0, 1, 2, 3, 4]]
-    printer = calibrating.PredefPrinter(
-        hw=A4.hw, ppi=A3.ppi * A4.hw[0] / A3.hw[0], name="paper_board_v1"
-    )
     boards = {}
     for name in marker_names:
         board = CharucoFeatureLib.build_with_calibration_img(
-            ppi=printer.ppi, hw=printer.hw, n=n, aruco_dict_tag=name
+            ppi=218.35, hw=(2480, 3508), n=n, aruco_dict_tag=name
         )
         boards[name] = board
-    print(boards)
+    print("boards:\n", boards)
 
     boards_cam = MultiBoardsCam(
         sorted(boxx.glob(f"{img_dir}/*left.jpg")), boards, name="boards_cam",
     )
 
     # Test convert boards_cam to NeRF.json
-    boards_cam.convert_to_nerf_json(f"{img_dir}/instant-ngp.json.json")
+    boards_cam.convert_to_nerf_json(f"{img_dir}/instant-ngp.json")
