@@ -98,25 +98,28 @@ class MultiBoardsCam(Cam):
 
 if __name__ == "__main__":
     from boxx import *
+    import os
     import calibrating
     from calibrating import Cam, A3, A4, CharucoFeatureLib
 
+    img_dir = os.path.abspath(
+        os.path.join(
+            __file__, "../../../calibrating_example_data/multi_boards_A3_5boards_4x4",
+        )
+    )
     # prepare boards
     n = 12
     marker_names = [f"DICT_4X4_1000_start{i*(n**2+1)//2}" for i in [0, 1, 2, 3, 4]]
     printer = calibrating.PredefPrinter(
         hw=A4.hw, ppi=A3.ppi * A4.hw[0] / A3.hw[0], name="paper_board_v1"
     )
-    img_dir = "/home/dl/megvii/project/ai_asrs/inventory_station/info/exps/few_shot_calibrate/imgs_A3_5boards_4x4"
-    cam = Cam.get_example_720p()
     boards = {}
-    calibration_imgs = []
     for name in marker_names:
         board = CharucoFeatureLib.build_with_calibration_img(
             ppi=printer.ppi, hw=printer.hw, n=n, aruco_dict_tag=name
         )
         boards[name] = board
-        calibration_imgs.append(board.calibration_img)
+    print(boards)
 
     boards_cam = MultiBoardsCam(
         sorted(boxx.glob(f"{img_dir}/*left.jpg")), boards, name="boards_cam",
