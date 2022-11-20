@@ -6,7 +6,7 @@ import boxx
 import numpy as np
 from glob import glob
 
-from boxx import imread, shows, show, showb
+from boxx import imread, imsave, shows, show, showb, tree, loga, pi
 
 
 def R_t_to_T(R, t=None):
@@ -14,13 +14,13 @@ def R_t_to_T(R, t=None):
         t = np.zeros((3,))
     T = np.zeros((4, 4))
     T[:3, :3] = R
-    T[:3, -1] = t.squeeze()
+    T[:3, -1] = np.array(t).squeeze()
     T[3, 3] = 1
     return T
 
 
 def r_t_to_T(r, t=None):
-    r = np.array(r)
+    r = np.float32(r)
     assert r.size == 3
     return R_t_to_T(cv2.Rodrigues(r.squeeze())[0], t)
 
@@ -456,7 +456,12 @@ def vis_T(T, cam=None, img=None, length=0.1):
     else:
         vis = img.copy()
     rvec, tvec = T_to_r_t(T)
+    invert_color = T[2, 3] < 0
+    if invert_color:
+        vis = 255-vis
     cv2.drawFrameAxes(vis, cam.K, cam.D, rvec, tvec, length)
+    if invert_color:
+        vis = 255-vis
     return vis
 
 
@@ -516,7 +521,7 @@ def get_test_cams(feature_type="checkboard"):
                 "../../../calibrating_example_data/paired_stereo_and_depth_cams_aruco",
             )
         )
-        feature_lib = ArucoFeatureLib(occlusion=True)
+        feature_lib = ArucoFeatureLib()
         caml = Cam(
             glob(os.path.join(root, "*", "stereo_l.jpg")),
             feature_lib,
