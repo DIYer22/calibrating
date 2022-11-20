@@ -97,10 +97,12 @@ def rotate_depth_by_point_cloud(K, R, depth, interpolation_rate=1):
     return dict(depth=new_depth, R=R)
 
 
-def rotate_depth_by_remap(K, R, depth, maps=None):
+def rotate_depth_by_remap(K, R, depth, maps=None, K2=None):
+    if K2 is None:
+        K2 = K
     y, x = depth.shape
     if maps is None:
-        maps = cv2.initUndistortRectifyMap(K, None, R, K, (x, y), cv2.CV_32FC1,)
+        maps = cv2.initUndistortRectifyMap(K, None, R, K2, (x, y), cv2.CV_32FC1,)
     ys, xs = np.mgrid[:y, :x]
     ys, xs = ys.flatten(), xs.flatten()
     points = np.array([xs, ys, np.ones_like(xs)]) * depth.flatten()[None]

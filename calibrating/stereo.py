@@ -31,12 +31,14 @@ class Stereo:
         └── D: (1, 5)float64
     """
 
-    def __init__(self, cam1=None, cam2=None, force_same_intrinsic=False):
+    def __init__(self, cam1=None, cam2=None, force_same_intrinsic=False, K_target=1):
+        self.K_target = K_target
         if cam1 is None:
             return
         self.cam1 = cam1
         self.cam2 = cam2
         self.force_same_intrinsic = force_same_intrinsic
+        # TODO better cx cy
         self.get_R_t_by_stereo_calibrate()
         self._get_undistort_rectify_map()
 
@@ -111,31 +113,47 @@ class Stereo:
         self.retval = retval
 
     def _get_undistort_rectify_map(self):
+        if isinstance(self.K_target, (int, float)):
+            K_target = self.K_target
+            self.K_target = self.cam1.K.copy()
+            self.K_target[:2, :2] *= K_target
         xy = self.cam1.xy
         self.R1, self.R2, P1, P2, Q, validPixROI1, validPixROI2 = cv2.stereoRectify(
             self.cam1.K, self.cam1.D, self.cam2.K, self.cam2.D, xy, self.R, self.t
         )
         self.undistort_rectify_map1 = cv2.initUndistortRectifyMap(
-            self.cam1.K, self.cam1.D, self.R1, self.cam1.K, xy, cv2.CV_32FC1
+            self.cam1.K, self.cam1.D, self.R1, self.K_target, xy, cv2.CV_32FC1
         )
         self.undistort_rectify_map2 = cv2.initUndistortRectifyMap(
-            self.cam2.K, self.cam2.D, self.R2, self.cam1.K, xy, cv2.CV_32FC1
+            self.cam2.K, self.cam2.D, self.R2, self.K_target, xy, cv2.CV_32FC1
         )
+        assert (utils.R_t_to_T(self.R2.T)@utils.R_t_to_T(self.R, self.t))[0, 3] < 0,  "The left and right cameras may be wrong. Please try to switch the camera order of Stereo(cam1, cam2)"
 
     def rectify(self, img1, img2):
-        rectified1 = cv2.remap(
+        rectify_img1 = cv2.remap(
             self._get_img(img1),
             self.undistort_rectify_map1[0],
             self.undistort_rectify_map1[1],
             cv2.INTER_LANCZOS4,
         )
-        rectified2 = cv2.remap(
+        rectify_img2 = cv2.remap(
             self._get_img(img2),
             self.undistort_rectify_map2[0],
             self.undistort_rectify_map2[1],
             cv2.INTER_LANCZOS4,
         )
-        return [rectified1, rectified2]
+        
+        if getattr(self, "translation_rectify_img", None):
+            if self.min_disparity > 0:
+                rectify_img2[:, self.min_disparity :] = rectify_img2[
+                    :, : -self.min_disparity
+                ]
+                rectify_img2[:, : self.min_disparity] = 0
+            elif self.min_disparity < 0:
+                rectify_img2[:, : self.min_disparity] = rectify_img2[:, -self.min_disparity:]
+                rectify_img2[:, self.min_disparity: ] = 0
+                
+        return [rectify_img1, rectify_img2]
 
     DUMP_ATTRS = ["R", "t", "retval"]
 
@@ -311,7 +329,7 @@ class Stereo:
 
     def unrectify_depth(self, depth):
         maps = getattr(self, "_unrectify_depth_maps", None)
-        re = utils.rotate_depth_by_remap(self.cam1.K, self.R1.T, depth, maps=maps)
+        re = utils.rotate_depth_by_remap(self.cam1.K, self.R1.T, depth, maps=maps, K2=self.K_target)
         if maps is None:
             self._unrectify_depth_maps = re["maps"]
         rotated_depth = re["depth"]
@@ -392,12 +410,6 @@ class Stereo:
             self, "stereo_matching"
         ), "Please stereo.set_stereo_matching(stereo_matching)"
         rectify_img1, rectify_img2 = self.rectify(img1, img2)
-        if getattr(self, "translation_rectify_img"):
-            rectify_img2[:, self.min_disparity :] = rectify_img2[
-                :, : -self.min_disparity
-            ]
-            rectify_img2[:, : self.min_disparity] = 0
-        # shows-(rectify_img1, rectify_img2)
         disparity = self.stereo_matching(rectify_img1, rectify_img2)
         if getattr(self, "translation_rectify_img"):
             disparity += self.min_disparity
