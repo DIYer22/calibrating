@@ -31,7 +31,15 @@ class Stereo:
         └── D: (1, 5)float64
     """
 
-    def __init__(self, cam1=None, cam2=None, force_same_intrinsic=False, K_target=1):
+    def __init__(
+        self,
+        cam1=None,
+        cam2=None,
+        force_same_intrinsic=False,
+        xy_target=None,
+        K_target=1,
+    ):
+        self.xy_target = xy_target
         self.K_target = K_target
         if cam1 is None:
             return
@@ -113,21 +121,31 @@ class Stereo:
         self.retval = retval
 
     def _get_undistort_rectify_map(self):
+
+        if self.xy_target is None:
+            self.xy_target = self.cam1.xy
+        if isinstance(self.xy_target, (int, float)):
+            self.xy_target = [int(round(i * self.xy_target)) for i in self.cam1.xy]
+        xy = tuple(self.xy_target)
         if isinstance(self.K_target, (int, float)):
             K_target = self.K_target
             self.K_target = self.cam1.K.copy()
             self.K_target[:2, :2] *= K_target
-        xy = self.cam1.xy
+            self.K_target[:2, 2] += (np.array(xy) - self.cam1.xy) / 2
+
         self.R1, self.R2, P1, P2, Q, validPixROI1, validPixROI2 = cv2.stereoRectify(
             self.cam1.K, self.cam1.D, self.cam2.K, self.cam2.D, xy, self.R, self.t
         )
         self.undistort_rectify_map1 = cv2.initUndistortRectifyMap(
             self.cam1.K, self.cam1.D, self.R1, self.K_target, xy, cv2.CV_32FC1
         )
+
         self.undistort_rectify_map2 = cv2.initUndistortRectifyMap(
             self.cam2.K, self.cam2.D, self.R2, self.K_target, xy, cv2.CV_32FC1
         )
-        assert (utils.R_t_to_T(self.R2.T)@utils.R_t_to_T(self.R, self.t))[0, 3] < 0,  "The left and right cameras may be wrong. Please try to switch the camera order of Stereo(cam1, cam2)"
+        assert (utils.R_t_to_T(self.R2.T) @ utils.R_t_to_T(self.R, self.t))[
+            0, 3
+        ] < 0, "The left and right cameras may be wrong. Please try to switch the camera order of Stereo(cam1, cam2)"
 
     def rectify(self, img1, img2):
         rectify_img1 = cv2.remap(
@@ -142,7 +160,7 @@ class Stereo:
             self.undistort_rectify_map2[1],
             cv2.INTER_LANCZOS4,
         )
-        
+
         if getattr(self, "translation_rectify_img", None):
             if self.min_disparity > 0:
                 rectify_img2[:, self.min_disparity :] = rectify_img2[
@@ -150,9 +168,11 @@ class Stereo:
                 ]
                 rectify_img2[:, : self.min_disparity] = 0
             elif self.min_disparity < 0:
-                rectify_img2[:, : self.min_disparity] = rectify_img2[:, -self.min_disparity:]
-                rectify_img2[:, self.min_disparity: ] = 0
-                
+                rectify_img2[:, : self.min_disparity] = rectify_img2[
+                    :, -self.min_disparity :
+                ]
+                rectify_img2[:, self.min_disparity :] = 0
+
         return [rectify_img1, rectify_img2]
 
     DUMP_ATTRS = ["R", "t", "retval"]
@@ -241,14 +261,16 @@ class Stereo:
         baseline = self.baseline
         zmin, zmax = min(depth_limits), max(depth_limits)
         print(
-            "-" * 15, "Stereo.precision_analysis", "-" * 15,
+            "-" * 15,
+            "Stereo.precision_analysis",
+            "-" * 15,
         )
         print(self)
         print("\n")
         dispmin = baseline * K[0, 0] / zmax
         dispmax = baseline * K[0, 0] / zmin
         disps = np.linspace(dispmin, dispmax)
-        uncen_on_disp = -baseline * K[0, 0] / disps ** 2
+        uncen_on_disp = -baseline * K[0, 0] / disps**2
         zs = baseline * K[0, 0] / disps
         disp_on_z = baseline * K[0, 0] / zs
 
@@ -269,7 +291,9 @@ class Stereo:
         plt.show()
         # TODO: x,y 双目共同视野 - depth 关系
         print(
-            "-" * 15, "End of Stereo.precision_analysis", "-" * 15,
+            "-" * 15,
+            "End of Stereo.precision_analysis",
+            "-" * 15,
         )
 
     def __str__(self):
@@ -314,22 +338,29 @@ class Stereo:
 
     @property
     def baseline(self):
-        return np.sum(self.t ** 2) ** 0.5
+        return np.sum(self.t**2) ** 0.5
 
     def depth_to_disparity(self, depth):
-        fx = self.cam1.K[0, 0]
+        fx = self.K_target[0, 0]
         disparity = 1.0 * self.baseline * fx / depth
         return disparity
 
     def disparity_to_depth(self, disparity):
-        fx = self.cam1.K[0, 0]
+        fx = self.K_target[0, 0]
         depth = 1.0 * self.baseline * fx / disparity
         depth[depth > self.get_max_depth()] = 0
         return depth
 
     def unrectify_depth(self, depth):
         maps = getattr(self, "_unrectify_depth_maps", None)
-        re = utils.rotate_depth_by_remap(self.cam1.K, self.R1.T, depth, maps=maps, K2=self.K_target)
+        re = utils.rotate_depth_by_remap(
+            self.K_target,
+            self.R1.T,
+            depth,
+            maps=maps,
+            xy_target=self.cam1.xy,
+            K_target=self.cam1.K,
+        )
         if maps is None:
             self._unrectify_depth_maps = re["maps"]
         rotated_depth = re["depth"]
@@ -382,7 +413,7 @@ class Stereo:
         max_depth : float, optional
             The default is Stereo.MAX_DEPTH.
         translation_rectify_img : bool, the default is None.
-            When self.get_depth(), translation rectify_img2 by self.min_disparity, 
+            When self.get_depth(), translation rectify_img2 by self.min_disparity,
             self.min_disparity is accroding to self.max_depth.
             default is accroding to bool(max_depth)
         """
@@ -426,11 +457,13 @@ class Stereo:
             unrectify_depth = self.unrectify_depth(rectify_depth)
             undistort_img1 = self.undistort_img(img1)
             result.update(
-                unrectify_depth=unrectify_depth, undistort_img1=undistort_img1,
+                unrectify_depth=unrectify_depth,
+                undistort_img1=undistort_img1,
             )
         if return_distort_depth:
             result.update(
-                distort_img1=img1, distort_depth=self.distort_depth(unrectify_depth),
+                distort_img1=img1,
+                distort_depth=self.distort_depth(unrectify_depth),
             )
         return result
 
