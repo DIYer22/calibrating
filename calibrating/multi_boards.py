@@ -104,7 +104,8 @@ if __name__ == "__main__":
 
     img_dir = os.path.abspath(
         os.path.join(
-            __file__, "../../../calibrating_example_data/multi_boards_A3_5boards_4x4",
+            __file__,
+            "../../../calibrating_example_data/multi_boards_A3_5boards_4x4",
         )
     )
     # prepare boards
@@ -119,7 +120,9 @@ if __name__ == "__main__":
     print("boards:\n", boards)
 
     boards_cam = MultiBoardsCam(
-        sorted(boxx.glob(f"{img_dir}/*left.jpg")), boards, name="boards_cam",
+        sorted(boxx.glob(f"{img_dir}/*left.jpg")),
+        boards,
+        name="boards_cam",
     )
 
     # Test convert boards_cam to NeRF.json

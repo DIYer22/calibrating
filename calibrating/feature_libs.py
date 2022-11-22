@@ -20,9 +20,9 @@ class MetaFeatureLib:
     def find_image_points(self, d):
         """
         d is a dict for each checkboard image, including keys like "img", "path"
-        
+
         Please calculate d["image_points"] and d["object_points"] base on d["img"]
-    
+
         The method should:
             Set d["image_points"] as np.array of shape(n, 2) or {id: shape(n, 2)}
             Set d["object_points"] as np.array of shape(n, 3) or {id: shape(n, 3)}
@@ -33,7 +33,7 @@ class MetaFeatureLib:
     def vis(self, d, cam=None):
         """
         d is a dict for each checkboard image, including keys like "img", "path"
-        
+
         return:
             vis: np.array(h, w, 3)
         """
@@ -101,7 +101,11 @@ class CheckboardFeatureLib(MetaFeatureLib):
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.01)
         if ret:
             cv2.cornerSubPix(
-                gray, corners, (4, 4), (-1, -1), criteria,
+                gray,
+                corners,
+                (4, 4),
+                (-1, -1),
+                criteria,
             )
             d["corners"] = corners
             d["image_points"] = corners[:, 0]
@@ -412,11 +416,22 @@ class CharucoFeatureLib(_MarkerFeatureLib):
                     feature_lib.calibration_img_name[:-4] + f"~{printer.name}~" + name
                 )
                 cv2.putText(
-                    cimg, name, (0, 20), cv2.FONT_HERSHEY_PLAIN, 2, (180, 180, 0), 2,
+                    cimg,
+                    name,
+                    (0, 20),
+                    cv2.FONT_HERSHEY_PLAIN,
+                    2,
+                    (180, 180, 0),
+                    2,
                 )
                 imgp = f"{img_dir}/{printer.name}-{name}.png"
                 print(f'Save calibration_img to:"{imgp}"')
-                boxx.imsave(imgp, cimg.clip(min_img_brightness,))
+                boxx.imsave(
+                    imgp,
+                    cimg.clip(
+                        min_img_brightness,
+                    ),
+                )
         if save_img:  # 交叉验证, 确保 marker 互不干扰
             for name in marker_names:
                 feature_lib = feature_libs[name]
@@ -444,7 +459,12 @@ if __name__ == "__main__":
     boxx.tree(feature_lib.init_kwargs)
     calibration_img = img = feature_lib.calibration_img
     # clip to 100 for printer to use less black ink
-    boxx.imsave(f"/tmp/{feature_lib.calibration_img_name}", calibration_img.clip(100,))
+    boxx.imsave(
+        f"/tmp/{feature_lib.calibration_img_name}",
+        calibration_img.clip(
+            100,
+        ),
+    )
     img = np.pad(calibration_img, ((50, 50), (50, 50), (0, 0)), constant_values=255)
     d = dict(img=img)
     # feature_lib = CharucoFeatureLib(aruco_dict_tag = cv2.aruco.DICT_APRILTAG_25H9)

@@ -260,11 +260,7 @@ class Stereo:
         K = self.cam1.K
         baseline = self.baseline
         zmin, zmax = min(depth_limits), max(depth_limits)
-        print(
-            "-" * 15,
-            "Stereo.precision_analysis",
-            "-" * 15,
-        )
+        print("-" * 15, "Stereo.precision_analysis", "-" * 15)
         print(self)
         print("\n")
         dispmin = baseline * K[0, 0] / zmax
@@ -290,11 +286,7 @@ class Stereo:
         plt.grid()
         plt.show()
         # TODO: x,y 双目共同视野 - depth 关系
-        print(
-            "-" * 15,
-            "End of Stereo.precision_analysis",
-            "-" * 15,
-        )
+        print("-" * 15, "End of Stereo.precision_analysis", "-" * 15)
 
     def __str__(self):
         r = utils.T_to_r(self.R).squeeze()

@@ -81,7 +81,12 @@ class Cam(dict):
         init_K, init_D = None, None
         # flags=cv2.CALIB_FIX_ASPECT_RATIO#+cv2.CALIB_FIX_PRINCIPAL_POINT
         self.retval, self.K, self.D, rvecs, tvecs = cv2.calibrateCamera(
-            self.object_points, self.image_points, self.xy, init_K, init_D, flags=flags,
+            self.object_points,
+            self.image_points,
+            self.xy,
+            init_K,
+            init_D,
+            flags=flags,
         )
 
         for idx, key in enumerate(self.valid_keys):
@@ -102,7 +107,7 @@ class Cam(dict):
 
     def fine_tuning_intrinsic(self, base_cam, momenta=0.5):
         """
-        Fine tuning intrinsic from base_cam's K and D. 
+        Fine tuning intrinsic from base_cam's K and D.
         By add new image_points and object_points that fit base_cam's intrinsic
         Then run self.calibrate() again
 
@@ -364,7 +369,7 @@ class Cam(dict):
     def valid_keys_intersection(cam1, cam2):
         return sorted(cam1.valid_keys.intersection(cam2.valid_keys))
 
-    def __str__(self,):
+    def __str__(self):
         def with_delta(v, base):
             sub = v - base
             s = f"{round(v, 1)} Δ{'' if sub<0 else '+'}{round(sub, 1)}({round(abs(sub)/base*100, 1)}%)"
@@ -377,7 +382,10 @@ class Cam(dict):
                 self.xy,
                 utils._str_angle_dic(self.fovs),
                 "\n\t\tfx=%s, fy=%s"
-                % (round(self.fx, 1), with_delta(self.fy, self.fx),)
+                % (
+                    round(self.fx, 1),
+                    with_delta(self.fy, self.fx),
+                )
                 + "\n\t\tcx=%s, cy=%s"
                 % (
                     with_delta(self.cx, self.xy[0] / 2),
@@ -441,7 +449,10 @@ class Cam(dict):
         for d in self.values():
             if "image_points" in d:
                 d.update(
-                    self.perspective_n_point(d["image_points"], d["object_points"],)
+                    self.perspective_n_point(
+                        d["image_points"],
+                        d["object_points"],
+                    )
                 )
 
     convert_to_nerf_json = convert_cam_to_nerf_json

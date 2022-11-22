@@ -52,7 +52,12 @@ def convert_cam_to_nerf_json(
             )
             T_cam_in_world = T_cam_in_world @ cv_to_nerf
             if rotate_z_as_up:
-                T_cam_in_world = utils.r_t_to_T([np.pi, 0, 0],) @ T_cam_in_world
+                T_cam_in_world = (
+                    utils.r_t_to_T(
+                        [np.pi, 0, 0],
+                    )
+                    @ T_cam_in_world
+                )
         dic = dict(
             file_path=boxx.basename(d["path"]) if basename else d["path"],
             transform_matrix=T_cam_in_world,
@@ -78,7 +83,10 @@ if __name__ == "__main__":
     from boxx import *
 
     example_data_dir = os.path.abspath(
-        os.path.join(__file__, "../../../calibrating_example_data",)
+        os.path.join(
+            __file__,
+            "../../../calibrating_example_data",
+        )
     )
     recon_dir = os.path.join(example_data_dir, "reconstruction_with_marker_board")
     glob_path = recon_dir + "/*.jpg"
@@ -91,7 +99,10 @@ if __name__ == "__main__":
         using_marker_corner=True,
     )
 
-    cam = Cam(sorted(boxx.glob(glob_path)), feature_lib,)
+    cam = Cam(
+        sorted(boxx.glob(glob_path)),
+        feature_lib,
+    )
     jsp = recon_dir + "/transforms.json"
     convert_cam_to_nerf_json(cam, json_path=jsp, basename=True, target_scale=2.5)
     print("Save to:", jsp)

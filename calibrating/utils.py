@@ -49,7 +49,7 @@ def R_to_deg(r_R_T):
 
 def T_to_deg_distance(T, compare_T=None):
     """
-    Translate the T matrix into items that humans can intuitively understand, 
+    Translate the T matrix into items that humans can intuitively understand,
     such as degrees of rotation and displacement distances
     Set compare_T to compare the difference between two Ts
 
@@ -146,7 +146,10 @@ def depth_to_point_cloud(depth, K, interpolation_rate=1, return_xyzuv=False):
         depth = np.float32(depth / 1000.0)
     if interpolation_rate == 1:
         mask = depth != 0
-        vs, us = np.mgrid[:y, :x,][:, mask]
+        vs, us = np.mgrid[
+            :y,
+            :x,
+        ][:, mask]
 
         # points = (np.array([xs, ys, np.ones_like(xs)]) * depth[None])[:, depth != 0].T
         points = (np.array([us, vs, np.ones_like(us)]) * depth[mask]).T
@@ -155,7 +158,13 @@ def depth_to_point_cloud(depth, K, interpolation_rate=1, return_xyzuv=False):
         y_, x_ = int(round(y * interpolation_rate)), int(round(x * interpolation_rate))
         depth_ = cv2.resize(depth, (x_, y_), interpolation=cv2.INTER_NEAREST)
         mask = depth_ != 0
-        vs, us = np.mgrid[:y_, :x_,][:, mask] / interpolation_rate
+        vs, us = (
+            np.mgrid[
+                :y_,
+                :x_,
+            ][:, mask]
+            / interpolation_rate
+        )
         points = (np.array([us, vs, np.ones_like(us)]) * depth_[mask]).T
 
     point_cloud = (np.linalg.inv(K) @ points.T).T
@@ -265,7 +274,10 @@ def interpolate_sparse2d(sparse2d, constrained_type=None, inter_type="lstsq"):
             smooth=0.5,
             episilon=5,
         )
-        output = spline(input_uvs[:, 0], input_uvs[:, 1],)
+        output = spline(
+            input_uvs[:, 0],
+            input_uvs[:, 1],
+        )
         output_uvzs = np.append(input_uvs, output[:, None], axis=-1)
     elif inter_type == "lstsq":
         A = uvzs.copy()
@@ -353,7 +365,7 @@ def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True):
     Pretty vis of depth l1, which will ignore missing depth.
     Could distinguish missing depth(black) and l1==0(grey)
     For l1>0(far) red, l1<0(near) green, color of overexposed area will turns white
-    
+
     Parameters
     ----------
     re : depth
@@ -444,7 +456,13 @@ def vis_point_uvs(
     for idx, uv in enumerate(uvs):
         if color is None:
             vis = cv2.circle(vis, tuple(uv[:2]), size * 2, (255, 255, 255), -1)
-        vis = cv2.circle(vis, tuple(uv[:2]), size, _color, -1,)
+        vis = cv2.circle(
+            vis,
+            tuple(uv[:2]),
+            size,
+            _color,
+            -1,
+        )
     return vis
 
 
@@ -473,10 +491,10 @@ def vis_T(T, cam=None, img=None, length=0.1):
     rvec, tvec = T_to_r_t(T)
     invert_color = T[2, 3] < 0
     if invert_color:
-        vis = 255-vis
+        vis = 255 - vis
     cv2.drawFrameAxes(vis, cam.K, cam.D, rvec, tvec, length)
     if invert_color:
-        vis = 255-vis
+        vis = 255 - vis
     return vis
 
 
@@ -510,7 +528,13 @@ def vis_align(img1, img2, n_line=21, shows=True):
     img2 = _to_3x_uint8(img2)
     y, x = img1.shape[:2]
     visv = vis_stereo(img1, img2, n_line=n_line)
-    vis = np.concatenate((visv, vis_stereo(img2, img1, n_line=n_line),), 0)
+    vis = np.concatenate(
+        (
+            visv,
+            vis_stereo(img2, img1, n_line=n_line),
+        ),
+        0,
+    )
     vis = np.rot90(
         vis_stereo(
             np.rot90(vis[:y]), np.rot90(vis[y:]), n_line=int(n_line * x * 2 / y)
@@ -575,8 +599,8 @@ class CvShow:
                 cvshow.imshow(rgb, "Windows name")
                 if key == "q":
                     break
-    
-    Or a more sample but not destroyAllWindows() when meet Exception 
+
+    Or a more sample but not destroyAllWindows() when meet Exception
     >>> for key in cvshow:
             cvshow.imshow(rgb, "Windows name")
             if key == "q":
