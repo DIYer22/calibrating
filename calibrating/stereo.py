@@ -133,9 +133,8 @@ class Stereo:
             self.K_target[:2, :2] *= K_target
             self.K_target[:2, 2] += (np.array(xy) - self.cam1.xy) / 2
 
-        self.R1, self.R2, P1, P2, Q, validPixROI1, validPixROI2 = cv2.stereoRectify(
-            self.cam1.K, self.cam1.D, self.cam2.K, self.cam2.D, xy, self.R, self.t
-        )
+        self.stereo_recitfy()
+
         self.undistort_rectify_map1 = cv2.initUndistortRectifyMap(
             self.cam1.K, self.cam1.D, self.R1, self.K_target, xy, cv2.CV_32FC1
         )
@@ -146,6 +145,35 @@ class Stereo:
         assert (utils.R_t_to_T(self.R2.T) @ utils.R_t_to_T(self.R, self.t))[
             0, 3
         ] < 0, "The left and right cameras may be wrong. Please try to switch the camera order of Stereo(cam1, cam2)"
+
+    def stereo_recitfy_by_cv2(self):
+        """When the right eye camera is rotated 180° around the z axis, a BUG will appear"""
+        self.R1, self.R2, P1, P2, Q, validPixROI1, validPixROI2 = cv2.stereoRectify(
+            self.cam1.K,
+            self.cam1.D,
+            self.cam2.K,
+            self.cam2.D,
+            tuple(self.xy_target),
+            self.R,
+            self.t,
+        )
+
+    def stereo_recitfy(self):
+        axes_z = np.array([0, 0, 1.0])
+        axes_nx = np.array([-1.0, 0, 0])
+        t = self.t.squeeze()
+        plane_v = t
+        z_on_plane2 = utils.project_vec_on_plane(axes_z, plane_v)
+        z_on_plane1 = utils.project_vec_on_plane(self.R @ axes_z, plane_v)
+        z_on_plane = z_on_plane2 / np.linalg.norm(
+            z_on_plane2
+        ) + z_on_plane1 / np.linalg.norm(z_on_plane1)
+
+        R_align_x = utils.rotate_shortest_of_two_vecs(axes_nx, t)
+        R_align_z = utils.rotate_shortest_of_two_vecs(R_align_x @ axes_z, z_on_plane)
+
+        self.R2 = (R_align_z @ R_align_x).T
+        self.R1 = self.R2 @ self.R[:3, :3]
 
     def rectify(self, img1, img2):
         rectify_img1 = cv2.remap(

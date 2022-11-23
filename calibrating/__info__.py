@@ -1,4 +1,4 @@
-__version__ = "0.5.23"
+__version__ = "0.5.24"
 __description__ = "Calibrate camera's intrinsic/extristric, and build stereo depth camera with OpenCV python."
 __license__ = "MIT"
 __author__ = "DIYer22"

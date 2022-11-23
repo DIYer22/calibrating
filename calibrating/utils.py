@@ -76,6 +76,19 @@ def convert_points_for_cv2(dic_or_np):
     return point
 
 
+def project_vec_on_plane(v, plane_v):
+    return v - np.dot(v, plane_v) / (np.linalg.norm(plane_v) ** 2) * plane_v
+
+
+def rotate_shortest_of_two_vecs(v1, v2, return_rodrigues=False):
+    cross = np.cross(v1, v2)
+    rad = np.arccos((v1 * v2).sum() / np.linalg.norm(v1) / np.linalg.norm(v2))
+    r = rad * cross / np.linalg.norm(cross)
+    if return_rodrigues:
+        return r
+    return cv2.Rodrigues(r)[0]
+
+
 def apply_T_to_point_cloud(T, point_cloud):
     """
     point_cloud's shape is N * [x, y, z] or N * [x, y, z, ....]
@@ -212,12 +225,6 @@ def uvzs_to_arr2d(uvs, hw=None, bg_value=0, arr2d=None, values=None):
         values[mask] if values.shape[1] >= 2 else values[mask][:, 0]
     )
     return arr2d
-
-
-# TODO rm
-def xyzs_to_arr2d(*args, **argkws):
-    print("\n\nWarning: xyzs_to_arr2d have rename to uvzs_to_arr2d")
-    return uvzs_to_arr2d(*args, **argkws)
 
 
 def arr2d_to_uvzs(arr2d, mask=None):
