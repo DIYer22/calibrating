@@ -5,8 +5,9 @@ import cv2
 import boxx
 import numpy as np
 from glob import glob
-
 from boxx import imread, imsave, shows, show, showb, tree, loga, pi
+
+inv = np.linalg.inv
 
 
 def R_t_to_T(R, t=None):
@@ -192,6 +193,28 @@ def point_cloud_to_depth(points, K, xy):
 
 
 def point_cloud_to_arr2d(points, K, xy, values=None, bg_value=0):
+    """
+    Converts 3D point cloud data into a 2D image array.
+
+    Parameters
+    ----------
+    points : ndarray
+        A Nx3 array of 3D points.
+    K : ndarray
+        A 3x3 matrix used to perform a projection transformation on the points.
+    xy : tuple of int
+        A tuple of the form (width, height) specifying the dimensions of the
+        desired 2D image array.
+    values : ndarray, optional
+        A 2D array of shape (N, C) representing data associated with each 3D point. Defaults to None.
+    bg_value : int, optional
+        The background value of the generated 2D image array.
+
+    Returns
+    -------
+    arr2d : ndarray
+        A 2D image array of shape (y, x, C) representing the converted 3D point cloud.
+    """
     xyzs = (K @ points.T).T
     xyzs[:, :2] /= xyzs[:, 2:]
     sorted_idx = np.argsort(-xyzs[:, 2])
@@ -206,6 +229,13 @@ def point_cloud_to_arr2d(points, K, xy, values=None, bg_value=0):
 
 
 def uvzs_to_arr2d(uvs, hw=None, bg_value=0, arr2d=None, values=None):
+    """
+    uvs: numpy array with shape (n, 2) or (n, 2 + values.shape[1]), where n is the number of (u, v) coordinates
+    hw: tuple of ints, representing the height and width of the resulting array. If not specified, it will default to the maximum (u, v) coordinates rounded up.
+    bg_value: int or float, representing the background value to fill the resulting array with.
+    arr2d: default arr2d. If not specified, a new array will be created with the specified height and width.
+    values: numpy array with shape (n, values.shape[1]), where values.shape[1] is the number of values to be associated with each (u, v) coordinate.
+    """
     if values is None:
         uvs, values = uvs[:, :2], uvs[:, 2:]
     if values.ndim == 1:
