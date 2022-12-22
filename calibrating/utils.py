@@ -215,7 +215,8 @@ def point_cloud_to_arr2d(points, K, xy, values=None, bg_value=0):
     arr2d : ndarray
         A 2D image array of shape (y, x, C) representing the converted 3D point cloud.
     """
-    xyzs = (K @ points.T).T
+    # equl to xyzs = (K @ points.T).T
+    xyzs = points @ K.T
     xyzs[:, :2] /= xyzs[:, 2:]
     sorted_idx = np.argsort(-xyzs[:, 2])
     xyzs_sorted = xyzs[sorted_idx]
@@ -585,7 +586,7 @@ def vis_align(img1, img2, n_line=21, shows=True):
 
 
 def get_test_cams(feature_type="checkboard"):
-    from calibrating import Cam, ArucoFeatureLib
+    from calibrating import Cam, PredifinedArucoBoard1
 
     if feature_type == "checkboard":
         caml, camr, camd = Cam.get_test_cams()
@@ -597,22 +598,22 @@ def get_test_cams(feature_type="checkboard"):
                 "../../../calibrating_example_data/paired_stereo_and_depth_cams_aruco",
             )
         )
-        feature_lib = ArucoFeatureLib()
+        board = PredifinedArucoBoard1()
         caml = Cam(
             glob(os.path.join(root, "*", "stereo_l.jpg")),
-            feature_lib,
+            board,
             name="caml",
             enable_cache=True,
         )
         camr = Cam(
             glob(os.path.join(root, "*", "stereo_r.jpg")),
-            feature_lib,
+            board,
             name="camr",
             enable_cache=True,
         )
         camd = Cam(
             glob(os.path.join(root, "*", "depth_cam_color.jpg")),
-            feature_lib,
+            board,
             name="camd",
             enable_cache=True,
         )

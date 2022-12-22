@@ -19,7 +19,7 @@ with boxx.inpkg():
     from .__info__ import __version__
     from .utils import r_t_to_T, intrinsic_format_conversion
     from .reconstruction import convert_cam_to_nerf_json
-    from .feature_libs import CheckboardFeatureLib, MetaFeatureLib
+    from .boards import Chessboard, MetaBoard
 
 TEMP = __import__("tempfile").gettempdir()
 
@@ -28,7 +28,7 @@ class Cam(dict):
     def __init__(
         self,
         img_paths=None,
-        feature_lib=None,
+        board=None,
         save_feature_vis=True,
         name=None,
         undistorted=False,
@@ -36,7 +36,7 @@ class Cam(dict):
     ):
         super().__init__()
         self.img_paths = img_paths
-        self.feature_lib = feature_lib
+        self.board = board
         self.save_feature_vis = save_feature_vis
         self.name = name or ("cam" + str(boxx.increase("caibrating.cam-name")))
         self.undistorted = undistorted
@@ -56,7 +56,7 @@ class Cam(dict):
         for key in tqdm(sorted(img_paths)):
             path = img_paths[key]
             d = dict(path=path, img=self.process_img(imread(path)))
-            feature_lib.find_image_points(d)
+            board.find_image_points(d)
             d.pop("img")
             self[key] = d
         self.calibrate()
@@ -101,7 +101,7 @@ class Cam(dict):
             for key in tqdm(self.valid_keys):
                 d = self[key]
                 d["img"] = self.process_img(imread(d["path"]))
-                vis = d.get("feature_lib", self.feature_lib).vis(d, self)
+                vis = d.get("board", self.board).vis(d, self)
                 boxx.imsave(visdir + "/" + key + ".jpg", vis)
                 d.pop("img")
 
@@ -123,7 +123,7 @@ class Cam(dict):
                 self.load(base_cam.dump())
             return self
         d0 = self[list(self)[0]]
-        meta_feature_lib = MetaFeatureLib()
+        meta_board = MetaBoard()
         points = self._get_points_for_cv2()
         newn = sum(map(len, points))
         needn = int(newn * momenta / (1 - momenta))
@@ -137,7 +137,7 @@ class Cam(dict):
 
         dn = int(len(points) * momenta / (1 - momenta))
         for d_idx in range(dn):
-            d = dict(feature_lib=meta_feature_lib)
+            d = dict(board=meta_board)
             d["path"] = d0["path"]
             d["image_points"] = np.float32(uvs[d_idx::dn])
             d["object_points"] = np.float32(xyzs[d_idx::dn])
@@ -168,9 +168,9 @@ class Cam(dict):
             try:
                 pickle.dump(self, open(cache_path, "wb"))
             except TypeError:
-                feature_lib = self.__dict__.pop("feature_lib")
+                board = self.__dict__.pop("board")
                 pickle.dump(self, open(cache_path, "wb"))
-                self.feature_lib = feature_lib
+                self.board = board
             print(self)
         return False
 
@@ -212,7 +212,7 @@ class Cam(dict):
         stereo.shows(*stereo.rectify(imgl, imgr))
         return stereo
 
-    def get_calibration_board_T(self, img_or_path_or_d, feature_lib=None):
+    def get_calibration_board_T(self, img_or_path_or_d, board=None):
         if isinstance(img_or_path_or_d, dict):
             d = img_or_path_or_d.copy()
             if "img" not in d:
@@ -225,17 +225,15 @@ class Cam(dict):
             )
             d = dict(img=img)
         assert d["img"].shape[:2][::-1] == self.xy
-        feature_lib = self.get_feature_lib(d, feature_lib)
+        board = self.get_board(d, board)
 
-        feature_lib.find_image_points(d)
+        board.find_image_points(d)
         if "image_points" in d:
             d.update(self.perspective_n_point(d["image_points"], d["object_points"]))
         return d
 
-    def get_calibration_board_depth(
-        cam, img_or_path_or_d, is_dense=True, feature_lib=None
-    ):
-        d = cam.get_calibration_board_T(img_or_path_or_d, feature_lib=feature_lib)
+    def get_calibration_board_depth(cam, img_or_path_or_d, is_dense=True, board=None):
+        d = cam.get_calibration_board_T(img_or_path_or_d, board=board)
         if "object_points" not in d:
             d["depth"] = np.zeros(cam.xy[::-1])
             return d
@@ -253,18 +251,18 @@ class Cam(dict):
         d["depth"] = depth_board
         return d
 
-    def get_feature_lib(cam=None, d=None, feature_lib=None):
+    def get_board(cam=None, d=None, board=None):
         """
-        get right feature_lib form cam, caboard d, or specified  feature_lib
-        feature_lib > d["feature_lib"] > cam.feature_lib
+        get right board form cam, caboard d, or specified  board
+        board > d["board"] > cam.board
         """
-        if feature_lib is None:
-            if d and d.get("feature_lib"):
-                feature_lib = d.get("feature_lib")
-            elif hasattr(cam, "feature_lib"):
-                feature_lib = cam.feature_lib
-        assert feature_lib, "Please set feature_lib or cam.feature_lib"
-        return feature_lib
+        if board is None:
+            if d and d.get("board"):
+                board = d.get("board")
+            elif hasattr(cam, "board"):
+                board = cam.board
+        assert board, "Please set board or cam.board"
+        return board
 
     def perspective_n_point(self, image_points, object_points):
         image_points = utils.convert_points_for_cv2(image_points)
@@ -518,22 +516,22 @@ class Cam(dict):
                 "../../../calibrating_example_data/paired_stereo_and_depth_cams_checkboard",
             )
         )
-        feature_lib = CheckboardFeatureLib(checkboard=(7, 10), size_mm=22.564)
+        board = Chessboard(checkboard=(7, 10), size_mm=22.564)
         caml = Cam(
             glob(os.path.join(root, "*", "stereo_l.jpg")),
-            feature_lib,
+            board,
             name="left",
             enable_cache=True,
         )
         camr = Cam(
             glob(os.path.join(root, "*", "stereo_r.jpg")),
-            feature_lib,
+            board,
             name="right",
             enable_cache=True,
         )
         camd = Cam(
             glob(os.path.join(root, "*", "depth_cam_color.jpg")),
-            feature_lib,
+            board,
             name="depth",
             enable_cache=True,
         )

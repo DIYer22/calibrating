@@ -551,23 +551,23 @@ class SemiGlobalBlockMatching(MetaStereoMatching):
         return disparity
 
 
-class MatchingByFeatureLib(MetaStereoMatching):
+class MatchingByBoard(MetaStereoMatching):
     """
-    Stereo mathch disp by feature_lib's image_points
+    Stereo mathch disp by board's image_points
     return a dense disp on calibration board
     """
 
-    def __init__(self, feature_lib, dense_predict=True):
-        self.feature_lib = feature_lib
+    def __init__(self, board, dense_predict=True):
+        self.board = board
         self.dense_predict = dense_predict
 
     def __call__(self, img1, img2):
-        self.feature_lib
+        self.board
         d1 = dict(img=img1)
-        self.feature_lib.find_image_points(d1)
+        self.board.find_image_points(d1)
         image_points1 = d1["image_points"]
         d2 = dict(img=img2)
-        self.feature_lib.find_image_points(d2)
+        self.board.find_image_points(d2)
         image_points2 = d2["image_points"]
 
         if isinstance(image_points1, dict):

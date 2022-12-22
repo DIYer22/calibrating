@@ -16,7 +16,7 @@ surface_book2_inch15 = PredefPrinter(
 )
 
 
-class MetaFeatureLib:
+class MetaBoard:
     def find_image_points(self, d):
         """
         d is a dict for each checkboard image, including keys like "img", "path"
@@ -80,7 +80,7 @@ class MetaFeatureLib:
     __repr__ = __str__
 
 
-class CheckboardFeatureLib(MetaFeatureLib):
+class Chessboard(MetaBoard):
     def __init__(self, checkboard=(11, 8), size_mm=25):
         self.init_kwargs = dict(checkboard=checkboard, size_mm=size_mm)
         self.checkboard = checkboard
@@ -185,7 +185,7 @@ def get_aruco_dictionary_with_start(aruco_dict_tag):
     return aruco_dictionary
 
 
-class ArucoFeatureLib(MetaFeatureLib):
+class PredifinedArucoBoard1(MetaBoard):
     def __init__(self, occlusion=False, detector_parameters=None):
         import cv2.aruco
 
@@ -241,16 +241,16 @@ class ArucoFeatureLib(MetaFeatureLib):
         return img
 
 
-class _MarkerFeatureLib(MetaFeatureLib):
+class _MarkerBoard(MetaBoard):
     pass
 
 
-class GridArucoFeatureLib(_MarkerFeatureLib):
+class GridArucoBoard(_MarkerBoard):
     def __init__(self):
         self
 
 
-class CharucoFeatureLib(_MarkerFeatureLib):
+class CharucoBoard(_MarkerBoard):
     def __init__(
         self,
         square_xy=(9, 5),
@@ -399,22 +399,20 @@ class CharucoFeatureLib(_MarkerFeatureLib):
         marker_names = [
             f"{aruco_dict_tag}_start{(squaren**2+1)//2*i}" for i in range(boardn)
         ]
-        feature_libs = {}
+        boards = {}
 
         for name in marker_names:
-            feature_lib = cls.build_with_calibration_img(
+            board = cls.build_with_calibration_img(
                 ppi=printer.ppi,
                 hw=printer.hw,
                 n=squaren,
                 aruco_dict_tag=name,
                 invert_color=invert_color,
             )
-            feature_libs[name] = feature_lib
+            boards[name] = board
             if save_img:
-                cimg = feature_lib.calibration_img.copy()
-                name = (
-                    feature_lib.calibration_img_name[:-4] + f"~{printer.name}~" + name
-                )
+                cimg = board.calibration_img.copy()
+                name = board.calibration_img_name[:-4] + f"~{printer.name}~" + name
                 cv2.putText(
                     cimg,
                     name,
@@ -434,42 +432,42 @@ class CharucoFeatureLib(_MarkerFeatureLib):
                 )
         if save_img:  # 交叉验证, 确保 marker 互不干扰
             for name in marker_names:
-                feature_lib = feature_libs[name]
+                board = boards[name]
                 for name_ in marker_names:
-                    calibration_img = feature_libs[name_].calibration_img
+                    calibration_img = boards[name_].calibration_img
                     d = dict(img=calibration_img)
-                    feature_lib.find_image_points(d)
+                    board.find_image_points(d)
                     if d.get("corners") is not None:
                         assert name == name_, [
                             name,
                             name_,
-                            boxx.showb(feature_lib.vis(d)),
+                            boxx.showb(board.vis(d)),
                         ]
-        return feature_libs
+        return boards
 
 
 if __name__ == "__main__":
     from boxx import *
 
-    # CharucoFeatureLib.get_multi_boards(save_img=True)
+    # CharucoBoard.get_multi_boards(save_img=True)
 
-    feature_lib = CharucoFeatureLib.build_with_calibration_img(
+    board = CharucoBoard.build_with_calibration_img(
         aruco_dict_tag="DICT_4X4_250_start50"
     )
-    boxx.tree(feature_lib.init_kwargs)
-    calibration_img = img = feature_lib.calibration_img
+    boxx.tree(board.init_kwargs)
+    calibration_img = img = board.calibration_img
     # clip to 100 for printer to use less black ink
     boxx.imsave(
-        f"/tmp/{feature_lib.calibration_img_name}",
+        f"/tmp/{board.calibration_img_name}",
         calibration_img.clip(
             100,
         ),
     )
     img = np.pad(calibration_img, ((50, 50), (50, 50), (0, 0)), constant_values=255)
     d = dict(img=img)
-    # feature_lib = CharucoFeatureLib(aruco_dict_tag = cv2.aruco.DICT_APRILTAG_25H9)
-    feature_lib.find_image_points(d)
-    vis = feature_lib.vis(d)
+    # board = CharucoBoard(aruco_dict_tag = cv2.aruco.DICT_APRILTAG_25H9)
+    board.find_image_points(d)
+    vis = board.vis(d)
 
     boxx.tree(d, deep=1)
     boxx.show(vis)

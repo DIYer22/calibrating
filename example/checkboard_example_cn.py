@@ -18,13 +18,13 @@ assert os.path.isdir(
 
 # ▮ 标定所有相机的内参
 # 准备棋盘格特征提取器
-feature_lib = calibrating.CheckboardFeatureLib(checkboard=(7, 10), size_mm=22.564)
+board = calibrating.Chessboard(checkboard=(7, 10), size_mm=22.564)
 
 # 实例化的过程中会自动标定内参 cam.K, cam.D, 并在 `/tmp/calibrating-*` 下存放 feature 可视化
 # 左目/右目/depth相机
-caml = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_l.jpg"), feature_lib)
-camr = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_r.jpg"), feature_lib)
-camd = calibrating.Cam(glob(f"{checkboard_img_dir}/*/depth_cam_color.jpg"), feature_lib)
+caml = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_l.jpg"), board)
+camr = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_r.jpg"), board)
+camd = calibrating.Cam(glob(f"{checkboard_img_dir}/*/depth_cam_color.jpg"), board)
 built_in_intrinsics = dict(
     fx=1474.1182177692722,
     fy=1474.125874583105,

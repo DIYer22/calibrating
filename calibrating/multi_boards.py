@@ -14,32 +14,32 @@ with boxx.inpkg():
 class MultiBoardsCam(Cam):
     """
     Support multi calibration boards in one image
-    Each board dict's key is named with `{img_key}~{feature_lib_key}`
+    Each board dict's key is named with `{img_key}~{board_key}`
     """
 
-    def __init__(self, imgps=None, feature_libs=None, **kwargs):
+    def __init__(self, imgps=None, boards=None, **kwargs):
         """
-        feature_libs: dict or list of feature_lib
+        boards: dict or list of board
         """
         super().__init__(**kwargs)
         if imgps is None:
             return
-        if not isinstance(feature_libs, dict):
-            feature_libs = dict([(str(i), v) for i, v in enumerate(feature_libs)])
+        if not isinstance(boards, dict):
+            boards = dict([(str(i), v) for i, v in enumerate(boards)])
         kwargs["save_feature_vis"] = False
-        for name in feature_libs:
+        for name in boards:
             kwargs["name"] = self.name + "~cam_~" + name
-            feature_lib = feature_libs[name]
-            cam_ = Cam(imgps, feature_lib=feature_lib, **kwargs)
+            board = boards[name]
+            cam_ = Cam(imgps, board=board, **kwargs)
             for k in cam_:
-                cam_[k]["feature_lib"] = feature_lib
+                cam_[k]["board"] = board
                 self[k + "~" + name] = cam_[k]
         self.calibrate()
-        self.feature_libs = feature_libs
+        self.boards = boards
 
     def get_board_name_to_T_world(self, origin_to_center=False):
         # TODO 1. support no common view, 2. using 加权平均(Rotate 向量模长为距离) or 优化重投影 loss 来求 T
-        boards = self.feature_libs
+        boards = self.boards
         board_name_to_img_names = defaultdict(lambda: {})
         for key, d in self.items():
             img_name, board_name = key.split("~")
@@ -69,7 +69,7 @@ class MultiBoardsCam(Cam):
 
     @wraps(convert_cam_to_nerf_json)
     def convert_to_nerf_json(self, *args, **argkws):
-        boards = self.feature_libs
+        boards = self.boards
         board_name_to_T_world = self.get_board_name_to_T_world(True)
         board_name_to_img_names = defaultdict(lambda: {})
         for key, d in self.items():
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     from boxx import *
     import os
     import calibrating
-    from calibrating import Cam, A3, A4, CharucoFeatureLib
+    from calibrating import Cam, A3, A4, CharucoBoard
 
     img_dir = os.path.abspath(
         os.path.join(
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     marker_names = [f"DICT_4X4_1000_start{i*(n**2+1)//2}" for i in [0, 1, 2, 3, 4]]
     boards = {}
     for name in marker_names:
-        board = CharucoFeatureLib.build_with_calibration_img(
+        board = CharucoBoard.build_with_calibration_img(
             ppi=218.35, hw=(2480, 3508), n=n, aruco_dict_tag=name
         )
         boards[name] = board

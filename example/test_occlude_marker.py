@@ -26,16 +26,16 @@ if __name__ == "__main__":
             "../../../calibrating_example_data/paired_stereo_and_depth_cams_aruco",
         )
     )
-    feature_lib = ArucoFeatureLib(occlusion=True)
+    board = PredifinedArucoBoard1(occlusion=True)
     caml = Cam(
         glob(os.path.join(root, "*", "stereo_l.jpg")),
-        feature_lib,
+        board,
         name="caml",
         enable_cache=enable_cache,
     )
     camr = Cam(
         glob(os.path.join(root, "*", "stereo_r.jpg")),
-        feature_lib,
+        board,
         name="camr",
         enable_cache=enable_cache,
     )
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 if 0:
     camd = Cam(
         glob(os.path.join(root, "*", "depth_cam_color.jpg")),
-        feature_lib,
+        board,
         name="camd",
         undistorted=True,
         enable_cache=enable_cache,

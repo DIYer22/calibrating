@@ -18,13 +18,13 @@ assert os.path.isdir(
 
 # ▮ Calibrate the intrinsic of all cameras
 # Prepare checkerboard feature extractor
-feature_lib = calibrating.CheckboardFeatureLib(checkboard=(7, 10), size_mm=22.564)
+board = calibrating.Chessboard(checkboard=(7, 10), size_mm=22.564)
 
 # In the process of instantiation, the intrinsic (cam.K, cam.D) will be automatically calibrated, and feature visualization will be stored under `/tmp/calibrating-*`
 # left_cam/right_cam/depth_cam
-caml = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_l.jpg"), feature_lib)
-camr = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_r.jpg"), feature_lib)
-camd = calibrating.Cam(glob(f"{checkboard_img_dir}/*/depth_cam_color.jpg"), feature_lib)
+caml = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_l.jpg"), board)
+camr = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_r.jpg"), board)
+camd = calibrating.Cam(glob(f"{checkboard_img_dir}/*/depth_cam_color.jpg"), board)
 built_in_intrinsics = dict(
     fx=1474.1182177692722,
     fy=1474.125874583105,

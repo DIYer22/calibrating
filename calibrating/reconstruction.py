@@ -79,7 +79,7 @@ def convert_cam_to_nerf_json(
 
 if __name__ == "__main__":
     import os
-    from calibrating import CharucoFeatureLib, Cam
+    from calibrating import CharucoBoard, Cam
     from boxx import *
 
     example_data_dir = os.path.abspath(
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     recon_dir = os.path.join(example_data_dir, "reconstruction_with_marker_board")
     glob_path = recon_dir + "/*.jpg"
 
-    feature_lib = CharucoFeatureLib.build_with_calibration_img(
+    board = CharucoBoard.build_with_calibration_img(
         ppi=218.35,
         hw=(2480, 3508),
         n=12,
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     cam = Cam(
         sorted(boxx.glob(glob_path)),
-        feature_lib,
+        board,
     )
     jsp = recon_dir + "/transforms.json"
     convert_cam_to_nerf_json(cam, json_path=jsp, basename=True, target_scale=2.5)

@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     cams = get_test_cams(feature_type)
     caml, camr, camd = cams["caml"], cams["camr"], cams["camd"]
-    feature_lib = caml.feature_lib
+    board = caml.board
     # caml, camr = camd, camr
 
     key = caml.valid_keys_intersection(camd)[0]
@@ -81,8 +81,8 @@ if __name__ == "__main__":
     stereo2.T, stereo2.t = T[:3, :3], T[:3, 3:]
     # stereo2._get_undistort_rectify_map()
 
-    # get depth_fm by MatchingByFeatureLib
-    feature_matching = calibrating.MatchingByFeatureLib(feature_lib)
+    # get depth_fm by MatchingByBoard
+    feature_matching = calibrating.MatchingByBoard(board)
     stereo.set_stereo_matching(
         feature_matching, max_depth=3, translation_rectify_img=True
     )
