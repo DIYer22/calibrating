@@ -36,7 +36,7 @@
     - 根据标定板 Ts 的丰富程度(Ts 和 meanT 的 R 分布大)和 image point 覆盖程度智能提示
     - vis_image_points_cover 添加 assert 和 warnning, 及开关
 - [ ] cam.rotate 考虑畸变
-- [ ] 更完善的代码文档, 尤其是 d 和 MetaBoard
+- [ ] 更完善的代码文档, 尤其是 d 和 BaseBoard
 - [ ] 自动测试用例
 ## Done
 - 和建冉沟通 calibrating 后
@@ -65,4 +65,5 @@
 - [x] 丰富的可视化
 - [x] depth point cloud interpolation
 - [x] rename feature_lib => board
+- [x] board 都有 .object_points 且坐标系居中
 

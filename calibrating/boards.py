@@ -16,7 +16,14 @@ surface_book2_inch15 = PredefPrinter(
 )
 
 
-class MetaBoard:
+class BaseBoard:
+    """
+    Some tips:
+    - The `.object_points` attribute should be provided to display the complete calibration board's object_points
+    - The origin of the calibration board is preferably its midpoint.
+        - `self.object_points = self.set_origin_to_center(self.object_points)`
+    """
+
     def find_image_points(self, d):
         """
         d is a dict for each checkboard image, including keys like "img", "path"
@@ -79,8 +86,16 @@ class MetaBoard:
 
     __repr__ = __str__
 
+    @staticmethod
+    def set_origin_to_center(points):
+        if isinstance(points, dict):
+            center = np.mean(utils.convert_points_for_cv2(points), 0, keepdims=True)
+            return {k: v - center for k, v in points.items()}
+        else:
+            return points - points.mean(0, keepdims=True)
 
-class Chessboard(MetaBoard):
+
+class Chessboard(BaseBoard):
     def __init__(self, checkboard=(11, 8), size_mm=25):
         self.init_kwargs = dict(checkboard=checkboard, size_mm=size_mm)
         self.checkboard = checkboard
@@ -93,6 +108,7 @@ class Chessboard(MetaBoard):
             * self.size_mm
             / 1000
         )
+        self.object_points = self.set_origin_to_center(self.object_points)
 
     def find_image_points(self, d):
         img = d["img"]
@@ -185,7 +201,7 @@ def get_aruco_dictionary_with_start(aruco_dict_tag):
     return aruco_dictionary
 
 
-class PredifinedArucoBoard1(MetaBoard):
+class PredifinedArucoBoard1(BaseBoard):
     def __init__(self, occlusion=False, detector_parameters=None):
         import cv2.aruco
 
@@ -205,6 +221,7 @@ class PredifinedArucoBoard1(MetaBoard):
         )
         self.object_points = dict(enumerate(self.all_object_points.reshape(-1, 4, 3)))
         self.aruco_dict_tag = cv2.aruco.DICT_6X6_250
+        self.object_points = self.set_origin_to_center(self.object_points)
 
     def find_image_points(self, d):
         img = d["img"]
@@ -241,7 +258,7 @@ class PredifinedArucoBoard1(MetaBoard):
         return img
 
 
-class _MarkerBoard(MetaBoard):
+class _MarkerBoard(BaseBoard):
     pass
 
 
@@ -281,6 +298,17 @@ class CharucoBoard(_MarkerBoard):
             marker_size_mm / 1000.0,
             self.aruco_dictionary,
         )
+        self.object_points = {
+            id: xyz[None] for id, xyz in enumerate(self.board.chessboardCorners)
+        }
+        if self.init_kwargs.get("using_marker_corner"):
+            self.object_points.update(
+                {
+                    -1 - marker_id: marker_corners
+                    for marker_id, marker_corners in enumerate(self.board.objPoints)
+                }
+            )
+        self.object_points = self.set_origin_to_center(self.object_points)
 
     def find_image_points(self, d):
         img = d["img"]
@@ -299,10 +327,7 @@ class CharucoBoard(_MarkerBoard):
             if charuco_ids is not None:
                 ids = charuco_ids[:, 0]
                 image_points = dict(zip(ids, charuco_corners))
-                object_points = {
-                    id: self.board.chessboardCorners[id][None] for id in ids
-                }
-                # image_points, object_points = {}, {}
+                object_points = {id: self.object_points[id] for id in ids}
                 if self.init_kwargs.get("using_marker_corner"):
                     marker_ids = marker_ids.squeeze()
                     image_points.update(
@@ -314,7 +339,7 @@ class CharucoBoard(_MarkerBoard):
                     )
                     object_points.update(
                         {
-                            -1 - i: self.board.objPoints[i]
+                            -1 - i: self.object_points[-1 - i]
                             for i in marker_ids
                             if i < len(self.board.objPoints)
                         }

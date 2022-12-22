@@ -475,6 +475,8 @@ def vis_point_uvs(
         size = np.sum(vis.shape[:2]) * 0.001 * size
         size = max(1, size)
     size = int(round(size))
+    if hasattr(color, "tolist"):
+        color = tuple(color.tolist())
     _color = (255, 0, 0) if color is None else color
     _draw_contour = False
     if convex_hull:

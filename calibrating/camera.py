@@ -19,7 +19,7 @@ with boxx.inpkg():
     from .__info__ import __version__
     from .utils import r_t_to_T, intrinsic_format_conversion
     from .reconstruction import convert_cam_to_nerf_json
-    from .boards import Chessboard, MetaBoard
+    from .boards import Chessboard, BaseBoard
 
 TEMP = __import__("tempfile").gettempdir()
 
@@ -123,7 +123,7 @@ class Cam(dict):
                 self.load(base_cam.dump())
             return self
         d0 = self[list(self)[0]]
-        meta_board = MetaBoard()
+        base_board = BaseBoard()
         points = self._get_points_for_cv2()
         newn = sum(map(len, points))
         needn = int(newn * momenta / (1 - momenta))
@@ -137,7 +137,7 @@ class Cam(dict):
 
         dn = int(len(points) * momenta / (1 - momenta))
         for d_idx in range(dn):
-            d = dict(board=meta_board)
+            d = dict(board=base_board)
             d["path"] = d0["path"]
             d["image_points"] = np.float32(uvs[d_idx::dn])
             d["object_points"] = np.float32(xyzs[d_idx::dn])

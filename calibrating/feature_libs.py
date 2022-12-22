@@ -8,7 +8,7 @@ with boxx.inpkg():
 """
 
 
-class MetaFeatureLib(MetaBoard):
+class MetaFeatureLib(BaseBoard):
     def __init__(self, *args, **argkws):
         new_class_name = self.__class__.__bases__[0].__name__
         message = f"{self.__class__.__name__} rename to {new_class_name}"
