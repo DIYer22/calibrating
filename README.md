@@ -77,16 +77,23 @@ flowchart
     end
 ```
 ## ▮ 3D reconstruction
-Convert to NeRF format json for 3D reconstruction, example:
+Convert to NeRF format json for 3D reconstruction.  
+Usage:
 ```python
 # Convert Cam object's intrinsic/extristric to NeRF fromat json
 # Note: 
 #   - When collecting images for reconstruction
 #   - should fix the calibration board and object, and move the camera
-cam.convert_to_nerf_json("nerf_instant-ngp_transforms.json")
+cam.convert_to_nerf_json("transforms.json")
 ```
+
+Example of converting [ChArUco images](https://github.com/yl-data/calibrating_example_data/tree/master/reconstruction_with_marker_board) to NeRF's transforms.json:
+```bash
+python calibrating/reconstruction.py 
+```
+
 <img alt="image" src="https://user-images.githubusercontent.com/10448025/192988171-40d51b15-e761-4fe6-9df4-0e2b509a79ec.png" width="400"> <img alt="instant ngp" src="https://user-images.githubusercontent.com/10448025/192993202-84ccab21-1f9d-4b3c-8dc7-090c121bb84e.jpg" width="400">     
-*Reconstruction effect of [instat-ngp](https://github.com/NVlabs/instant-ngp)*
+*Reconstruction effect of [instat-ngp](https://github.com/NVlabs/instant-ngp) using ChArUco boards*
 
 
 ## ▮ Multiple Boards

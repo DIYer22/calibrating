@@ -125,5 +125,7 @@ if __name__ == "__main__":
         name="boards_cam",
     )
 
-    # Test convert boards_cam to NeRF.json
-    boards_cam.convert_to_nerf_json(f"{img_dir}/instant-ngp.json")
+    # Test convert boards_cam to NeRF's transforms.json
+    jsp = f"{img_dir}/transforms.json"
+    boards_cam.convert_to_nerf_json(jsp)
+    print("Save to:", jsp)
