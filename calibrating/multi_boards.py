@@ -30,7 +30,10 @@ class MultiBoardsCam(Cam):
         for name in boards:
             kwargs["name"] = self.name + "~cam_~" + name
             board = boards[name]
-            cam_ = Cam(imgps, board=board, **kwargs)
+            try:
+                cam_ = Cam(imgps, board=board, **kwargs)
+            except AssertionError:
+                continue
             for k in cam_:
                 cam_[k]["board"] = board
                 self[k + "~" + name] = cam_[k]

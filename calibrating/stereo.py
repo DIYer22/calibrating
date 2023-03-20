@@ -35,7 +35,6 @@ class Stereo:
         self,
         cam1=None,
         cam2=None,
-        force_same_intrinsic=False,
         xy_target=None,
         K_target=1,
     ):
@@ -45,13 +44,15 @@ class Stereo:
             return
         self.cam1 = cam1
         self.cam2 = cam2
-        self.force_same_intrinsic = force_same_intrinsic
         # TODO better cx cy
         self.get_R_t_by_stereo_calibrate()
         self._get_undistort_rectify_map()
 
     def get_conjoint_points(self):
-        image_points = list(self.cam1.values())[0]["image_points"]
+        for d in self.cam1.values():
+            if "image_points" in d:
+                image_points = d["image_points"]
+                break
         # "image_points" is checkboard type: shape(n, 2)
         if isinstance(image_points, np.ndarray):
             keys = self.cam1.valid_keys_intersection(self.cam2)
@@ -92,11 +93,6 @@ class Stereo:
             conjoint_image_points2,
             conjoint_object_points,
         ) = self.get_conjoint_points()
-
-        if self.force_same_intrinsic:
-            self.cam2 = self.cam2.copy()
-            self.cam2.K = self.cam1.K
-            self.cam2.D = self.cam1.D
 
         flags = 0
         flags |= cv2.CALIB_FIX_INTRINSIC
@@ -142,9 +138,11 @@ class Stereo:
         self.undistort_rectify_map2 = cv2.initUndistortRectifyMap(
             self.cam2.K, self.cam2.D, self.R2, self.K_target, xy, cv2.CV_32FC1
         )
-        assert (utils.R_t_to_T(self.R2.T) @ utils.R_t_to_T(self.R, self.t))[
-            0, 3
-        ] < 0, "The left and right cameras may be wrong. Please try to switch the camera order of Stereo(cam1, cam2)"
+
+        # TODO rm
+        # assert (utils.R_t_to_T(self.R2.T) @ utils.R_t_to_T(self.R, self.t))[
+        #     0, 3
+        # ] < 0, "The left and right cameras may be wrong. Please try to switch the camera order of Stereo(cam1, cam2)"
 
     def stereo_recitfy_by_cv2(self):
         """When the right eye camera is rotated 180° around the z axis, a BUG will appear"""
@@ -298,13 +296,13 @@ class Stereo:
         zs = baseline * K[0, 0] / disps
         disp_on_z = baseline * K[0, 0] / zs
 
-        print("Depth(m) - disparity(pixel):")
+        print("Depth(m) - Disparity(pixel):")
         plt.plot(zs, disp_on_z)
         plt.grid()
         plt.show()
         print("\nTheoretical zmap precision:")
         print(
-            "\tDepth - The depth range represented by a pixel disparity(depth uncertainty)"
+            "\tDepth - Depth uncertainty(The depth range represented by a pixel disparity)"
         )
         plt.plot(zs, np.abs(uncen_on_disp))
         # plt.grid()
