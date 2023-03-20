@@ -2,6 +2,7 @@
 
 import os
 import cv2
+import time
 import boxx
 import numpy as np
 from glob import glob
@@ -666,7 +667,12 @@ class CvShow:
     @classmethod
     def imshow(cls, rgb, window="default"):
         rgb = rgb[..., ::-1] if rgb.ndim == 3 and rgb.shape[-1] == 3 else rgb
+
+        # show in another threading will Stuck in second runfile in spyder
+        # print("inloop", boxx.increase())
+        # tree-rgb
         cv2.imshow(window, rgb)
+        # print("end")
         key_idx = cv2.waitKey(1)
         if key_idx != -1:
             cls.temp_keys.append(key_idx)
@@ -720,6 +726,86 @@ class CvShow:
 
 
 cvshow = CvShow()
+
+
+import threading
+
+
+class VideoWriter:
+    def __init__(self, path="/tmp/video.avi", fps=None, codec=None, min_framen=3):
+        self.path = path if "." in os.path.basename(path) else path + ".avi"
+        self.fps = fps
+        self.min_framen = min_framen
+        self.codec = cv2.VideoWriter_fourcc(*"XVID") if codec is None else codec
+        self.bgr_buffer = {}
+        self.frame_idx = 0
+        self.cv2_video_writer = None
+        self.one_write_lock = threading.Lock()
+        self.shape = [0, 360, 640, 3]  # defualt shape[framen, h, w, c]
+
+    def __enter__(self):
+        return self
+
+    def write_with_lock(self, bgr):
+        with self.one_write_lock:
+            self.cv2_video_writer.write(bgr)
+
+    def init_cv2_video_writer(
+        self,
+    ):
+        if self.fps is None:
+            if len(self.bgr_buffer) >= 2:
+                ts = sorted(self.bgr_buffer)
+                t1, t2 = ts[0], ts[-1]
+                self.fps = (len(self.bgr_buffer) - 1) / (t2 - t1)
+                self.fps = min(self.fps, 1536)
+            else:
+                self.fps = 1
+        self.fps = int(round(self.fps))
+        self.cv2_video_writer = cv2.VideoWriter(
+            self.path, self.codec, self.fps, self.shape[1:3][::-1]
+        )
+
+        d = self.bgr_buffer.copy()
+        self.bgr_buffer.clear()
+        for t in sorted(d):
+            self.write_with_lock(d[t])
+
+    def write(self, rgb):
+        y, x = rgb.shape[:2]
+        bgr = rgb
+        if rgb.ndim == 3:
+            bgr = cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB)
+        if self.cv2_video_writer:
+            thread = threading.Thread(target=self.write_with_lock, args=[bgr])
+            with self.one_write_lock:
+                thread.start()
+        else:
+            self.bgr_buffer[time.time()] = bgr
+            if len(self.bgr_buffer) >= self.min_framen:
+                self.init_cv2_video_writer()
+        self.frame_idx += 1
+        self.shape = [self.frame_idx] + list(bgr.shape)
+
+    def __exit__(self, *args):
+        if not self.cv2_video_writer:
+            self.init_cv2_video_writer()
+        self.cv2_video_writer.release()
+
+    __call__ = write
+
+    @classmethod
+    def test(cls):
+        rgb = boxx.sda.coffee()
+        with VideoWriter() as vw:
+            for i in range(100):
+                boxx.sleep(1 / 30)
+                rgb = np.append(rgb[1:], rgb[:1], 0)
+                with boxx.timeit():
+                    vw.write(rgb)
+
+        print(vw.path, "vw.shape:", vw.shape, "vw.fps:", vw.fps)
+        boxx.mg()
 
 
 if __name__ == "__main__":
