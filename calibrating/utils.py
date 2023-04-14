@@ -9,6 +9,7 @@ from glob import glob
 from boxx import imread, imsave, shows, show, showb, tree, loga, pi
 
 inv = np.linalg.inv
+eps = 1e-8
 
 
 def R_t_to_T(R, t=None):
@@ -85,7 +86,7 @@ def project_vec_on_plane(v, plane_v):
 def rotate_shortest_of_two_vecs(v1, v2, return_rodrigues=False):
     cross = np.cross(v1, v2)
     rad = np.arccos((v1 * v2).sum() / np.linalg.norm(v1) / np.linalg.norm(v2))
-    r = rad * cross / np.linalg.norm(cross)
+    r = rad * cross / (np.linalg.norm(cross) + eps)
     if return_rodrigues:
         return r
     return cv2.Rodrigues(r)[0]
@@ -588,6 +589,26 @@ def vis_align(img1, img2, n_line=21, shows=True):
     return viss
 
 
+def prepare_example_data_dir():
+    example_data_dir = os.path.abspath(
+        os.path.join(
+            __file__,
+            "../../../calibrating_example_data",
+        )
+    )
+    if not os.path.exists(example_data_dir):
+        example_data_dir = os.path.join(
+            __import__("tempfile").gettempdir(), "calibrating_example_data"
+        )
+        if not os.path.exists(example_data_dir):
+            cmd = f"git clone https://github.com/yl-data/calibrating_example_data '{example_data_dir}' --depth 1"
+            print(
+                f"INFO from calibrating: \n\tThe calibrating_example_data does not exist. \n\tThe example_data will be automatically cloned which may take a few minutes. \n\tThe following command will be executed: \n\t\t{cmd}"
+            )
+            assert not os.system(cmd), cmd
+    return example_data_dir
+
+
 def get_test_cams(feature_type="checkboard"):
     from calibrating import Cam, PredifinedArucoBoard1
 
@@ -595,27 +616,24 @@ def get_test_cams(feature_type="checkboard"):
         caml, camr, camd = Cam.get_test_cams()
         return dict(caml=caml, camr=camr, camd=camd)
     elif feature_type == "aruco":
-        root = os.path.abspath(
-            os.path.join(
-                __file__,
-                "../../../calibrating_example_data/paired_stereo_and_depth_cams_aruco",
-            )
+        example_data_dir = os.path.join(
+            prepare_example_data_dir(), "paired_stereo_and_depth_cams_aruco"
         )
         board = PredifinedArucoBoard1()
         caml = Cam(
-            glob(os.path.join(root, "*", "stereo_l.jpg")),
+            glob(os.path.join(example_data_dir, "*", "stereo_l.jpg")),
             board,
             name="caml",
             enable_cache=True,
         )
         camr = Cam(
-            glob(os.path.join(root, "*", "stereo_r.jpg")),
+            glob(os.path.join(example_data_dir, "*", "stereo_r.jpg")),
             board,
             name="camr",
             enable_cache=True,
         )
         camd = Cam(
-            glob(os.path.join(root, "*", "depth_cam_color.jpg")),
+            glob(os.path.join(example_data_dir, "*", "depth_cam_color.jpg")),
             board,
             name="camd",
             enable_cache=True,

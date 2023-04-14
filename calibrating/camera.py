@@ -17,7 +17,7 @@ with boxx.inpkg():
     from . import utils
     from .stereo import Stereo
     from .__info__ import __version__
-    from .utils import r_t_to_T, intrinsic_format_conversion
+    from .utils import r_t_to_T, intrinsic_format_conversion, prepare_example_data_dir
     from .reconstruction import convert_cam_to_nerf_json
     from .boards import Chessboard, BaseBoard
 
@@ -510,27 +510,24 @@ class Cam(dict):
 
     @staticmethod
     def get_test_cams():
-        root = os.path.abspath(
-            os.path.join(
-                __file__,
-                "../../../calibrating_example_data/paired_stereo_and_depth_cams_checkboard",
-            )
+        example_data_dir = os.path.join(
+            prepare_example_data_dir(), "paired_stereo_and_depth_cams_checkboard"
         )
         board = Chessboard(checkboard=(7, 10), size_mm=22.564)
         caml = Cam(
-            glob(os.path.join(root, "*", "stereo_l.jpg")),
+            glob(os.path.join(example_data_dir, "*", "stereo_l.jpg")),
             board,
             name="left",
             enable_cache=True,
         )
         camr = Cam(
-            glob(os.path.join(root, "*", "stereo_r.jpg")),
+            glob(os.path.join(example_data_dir, "*", "stereo_r.jpg")),
             board,
             name="right",
             enable_cache=True,
         )
         camd = Cam(
-            glob(os.path.join(root, "*", "depth_cam_color.jpg")),
+            glob(os.path.join(example_data_dir, "*", "depth_cam_color.jpg")),
             board,
             name="depth",
             enable_cache=True,
@@ -541,7 +538,7 @@ class Cam(dict):
             cx=1037.599716850734,
             cy=758.3072639103259,
         )
-        # depth need to be used in pairs with camera's built-in intrinsics
+        # depth need to be used in pairs with depth camera's built-in intrinsics
         camd.load(built_in_intrinsics)
         return caml, camr, camd
 
