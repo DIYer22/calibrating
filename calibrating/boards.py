@@ -226,7 +226,7 @@ class PredifinedArucoBoard1(BaseBoard):
     def find_image_points(self, d):
         img = d["img"]
         gray = img if img.ndim == 2 else cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        parameters = cv2.aruco.DetectorParameters_create()
+        parameters = cv2.aruco.DetectorParameters()
         self.detector_parameters.setdefault("polygonalApproxAccuracyRate", 0.008)
         [
             setattr(parameters, key, value)
@@ -234,7 +234,9 @@ class PredifinedArucoBoard1(BaseBoard):
         ]
 
         d["corners"], d["ids"], rejectedImgPoints = cv2.aruco.detectMarkers(
-            gray, cv2.aruco.Dictionary_get(self.aruco_dict_tag), parameters=parameters
+            gray,
+            cv2.aruco.getPredefinedDictionary(self.aruco_dict_tag),
+            parameters=parameters,
         )
         d["valid"] = d["ids"] is not None and (
             len(d["ids"]) == len(self.object_points) or self.occlusion
