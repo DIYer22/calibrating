@@ -53,6 +53,8 @@ class Stereo:
             if "image_points" in d:
                 image_points = d["image_points"]
                 break
+        else:
+            raise AssertionError("No valid image that could det image_points")
         # "image_points" is checkboard type: shape(n, 2)
         if isinstance(image_points, np.ndarray):
             keys = self.cam1.valid_keys_intersection(self.cam2)
@@ -244,7 +246,7 @@ class Stereo:
             self.cam1 = Cam.load(dic.pop("cam1"))
             self.cam2 = Cam.load(dic.pop("cam2"))
         self.__dict__.update(
-            {k: np.array(v) if k in self.DUMP_ATTRS else v for k, v in dic.items()}
+            {k: boxx.npa(v) if k in self.DUMP_ATTRS else v for k, v in dic.items()}
         )
         self._get_undistort_rectify_map()
         return self
