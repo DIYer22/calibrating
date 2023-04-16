@@ -82,7 +82,7 @@ class BaseBoard:
     def __str__(self):
         if hasattr(self, "init_kwargs"):
             return str(self.init_kwargs)
-        return object.__str__(self)
+        return f"Instance of {type(self).__name__}"
 
     __repr__ = __str__
 
@@ -293,15 +293,14 @@ class CharucoBoard(_MarkerBoard):
 
         self.aruco_dict_tag = aruco_dict_tag
         self.aruco_dictionary = get_aruco_dictionary_with_start(aruco_dict_tag)
-        self.board = cv2.aruco.CharucoBoard_create(
-            square_xy[0],
-            square_xy[1],
+        self.board = cv2.aruco.CharucoBoard(
+            square_xy,
             square_size_mm / 1000.0,
             marker_size_mm / 1000.0,
             self.aruco_dictionary,
         )
         self.object_points = {
-            id: xyz[None] for id, xyz in enumerate(self.board.chessboardCorners)
+            id: xyz[None] for id, xyz in enumerate(self.board.getChessboardCorners())
         }
         if self.init_kwargs.get("using_marker_corner"):
             self.object_points.update(
@@ -390,7 +389,7 @@ class CharucoBoard(_MarkerBoard):
 
         self = cls(**init_kwargs)
         self.calibration_img = cv2.cvtColor(
-            self.board.draw(hw[::-1]), cv2.COLOR_GRAY2RGB
+            self.board.generateImage(hw[::-1]), cv2.COLOR_GRAY2RGB
         )
         if invert_color:
             self.calibration_img = 255 - self.calibration_img
