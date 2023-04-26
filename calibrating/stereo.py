@@ -445,6 +445,7 @@ class Stereo:
         )
         self.max_depth = max_depth or self.MAX_DEPTH
         self.min_disparity = int(self.cam1.K[0, 0] * self.baseline / self.max_depth)
+        return self
 
     # TODO: return_unrectify_depth default False
     def get_depth(
@@ -456,18 +457,21 @@ class Stereo:
             rectify_depth
         The unit of depth is m
         """
-
+        result = {}
         assert hasattr(
             self, "stereo_matching"
         ), "Please stereo.set_stereo_matching(stereo_matching)"
         rectify_img1, rectify_img2 = self.rectify(img1, img2)
         disparity = self.stereo_matching(rectify_img1, rectify_img2)
+        if isinstance(disparity, dict):
+            result.update(disparity)
+            disparity = disparity["disparity"]
         if getattr(self, "translation_rectify_img"):
             disparity += self.min_disparity
 
         rectify_depth = self.disparity_to_depth(disparity)
 
-        result = dict(
+        result.update(
             rectify_img1=rectify_img1,
             rectify_depth=rectify_depth,
             disparity=disparity,
@@ -488,111 +492,12 @@ class Stereo:
         return result
 
 
-class MetaStereoMatching:
-    def __init__(self, cfg=None):
-        self.cfg = cfg
-
-    def __call__(self, img1, img2):
-        # input: RGB uint8 (h, w, 3)uint8
-        raise NotImplementedError()
-        # output: float disparity (h, w)float64, unit is m
-        # return disparity
-
-
-# A Example of StereoMatching class
-class SemiGlobalBlockMatching(MetaStereoMatching):
-    def __init__(self, cfg=None):
-        if cfg is None:
-            cfg = {}
-        self.cfg = cfg
-        self.max_size = self.cfg.get("max_size", 1000)
-
-        # StereoSGBM_create from https://gist.github.com/andijakl/ffe6e5e16742455291ef2a4edbe63cb7
-        block_size = 11
-        min_disp = 2
-        max_disp = 220
-        # Maximum disparity minus minimum disparity. The value is always greater than zero.
-        # In the current implementation, this parameter must be divisible by 16.
-        num_disp = max_disp - min_disp
-        # Margin in percentage by which the best (minimum) computed cost function value should "win" the second best value to consider the found match correct.
-        # Normally, a value within the 5-15 range is good enough
-        uniquenessRatio = 5
-        # Maximum size of smooth disparity regions to consider their noise speckles and invalidate.
-        # Set it to 0 to disable speckle filtering. Otherwise, set it somewhere in the 50-200 range.
-        speckleWindowSize = 200
-        # Maximum disparity variation within each connected component.
-        # If you do speckle filtering, set the parameter to a positive value, it will be implicitly multiplied by 16.
-        # Normally, 1 or 2 is good enough.
-        speckleRange = 2
-        disp12MaxDiff = 0
-
-        self.stereo_sgbm = cv2.StereoSGBM_create(
-            minDisparity=min_disp,
-            numDisparities=num_disp,
-            blockSize=block_size,
-            uniquenessRatio=uniquenessRatio,
-            speckleWindowSize=speckleWindowSize,
-            speckleRange=speckleRange,
-            disp12MaxDiff=disp12MaxDiff,
-            P1=8 * 1 * block_size * block_size,
-            P2=32 * 1 * block_size * block_size,
-        )
-
-    def __call__(self, img1, img2):
-        resize_ratio = min(self.max_size / max(img1.shape[:2]), 1)
-        simg1, simg2 = boxx.resize(img1, resize_ratio), boxx.resize(img2, resize_ratio)
-        sdisparity = (self.stereo_sgbm.compute(simg1, simg2).astype(np.float32)).clip(0)
-        sdisparity[sdisparity < self.stereo_sgbm.getMinDisparity() * 16] = 0
-        disparity = (
-            boxx.resize(sdisparity / 16.0, img1.shape[:2])
-            * img1.shape[1]
-            / simg1.shape[1]
-        )
-        return disparity
-
-
-class MatchingByBoard(MetaStereoMatching):
-    """
-    Stereo mathch disp by board's image_points
-    return a dense disp on calibration board
-    """
-
-    def __init__(self, board, dense_predict=True):
-        self.board = board
-        self.dense_predict = dense_predict
-
-    def __call__(self, img1, img2):
-        self.board
-        d1 = dict(img=img1)
-        self.board.find_image_points(d1)
-        image_points1 = d1["image_points"]
-        d2 = dict(img=img2)
-        self.board.find_image_points(d2)
-        image_points2 = d2["image_points"]
-
-        if isinstance(image_points1, dict):
-            image_points1 = []
-            image_points2 = []
-            for key in sorted(set(d1["image_points"]).intersection(d2["image_points"])):
-                image_points1.append(d1["image_points"][key])
-                image_points2.append(d2["image_points"][key])
-            image_points1 = np.concatenate(image_points1, 0)
-            image_points2 = np.concatenate(image_points2, 0)
-
-        rectify_std = np.std((image_points2 - image_points1)[:, 1])
-        point_disps = (image_points1 - image_points2)[:, 0]
-        xyds = np.append(image_points1, point_disps[:, None], axis=-1)
-        sparse_disp = utils.uvzs_to_arr2d(xyds, img1.shape[:2])
-        if self.dense_predict:
-            dense_disp = utils.interpolate_sparse2d(sparse_disp, "convex_hull")
-            return dense_disp
-        else:
-            return sparse_disp
-
-
 if __name__ == "__main__":
     from boxx import *
-    from calibrating import Cam
+
+    with boxx.inpkg():
+        from .camera import Cam
+        from .stereo_matching import SemiGlobalBlockMatching
 
     cam1, cam2, camd = Cam.get_test_cams()
 

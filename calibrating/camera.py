@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-import boxx
-from boxx import imread
-
 import os
 import cv2
+import boxx
 import yaml
 import copy
 import uuid
@@ -55,7 +53,7 @@ class Cam(dict):
             return
         for key in tqdm(sorted(img_paths)):
             path = img_paths[key]
-            d = dict(path=path, img=self.process_img(imread(path)))
+            d = dict(path=path, img=self.process_img(boxx.imread(path)))
             board.find_image_points(d)
             d.pop("img")
             self[key] = d
@@ -100,7 +98,7 @@ class Cam(dict):
             os.makedirs(visdir, exist_ok=True)
             for key in tqdm(self.valid_keys):
                 d = self[key]
-                d["img"] = self.process_img(imread(d["path"]))
+                d["img"] = self.process_img(boxx.imread(d["path"]))
                 vis = d.get("board", self.board).vis(d, self)
                 boxx.imsave(visdir + "/" + key + ".jpg", vis)
                 d.pop("img")
@@ -191,7 +189,7 @@ class Cam(dict):
     def set_xy(self, img=None):
         if not hasattr(self, "xy"):
             if img is None:
-                img = imread(next(iter(self.values()))["path"])
+                img = boxx.imread(next(iter(self.values()))["path"])
             self.xy = img.shape[1], img.shape[0]
         return self.xy
 
@@ -216,10 +214,10 @@ class Cam(dict):
         if isinstance(img_or_path_or_d, dict):
             d = img_or_path_or_d.copy()
             if "img" not in d:
-                d["img"] = imread(d["path"])
+                d["img"] = boxx.imread(d["path"])
         else:
             img = (
-                imread(img_or_path_or_d)
+                boxx.imread(img_or_path_or_d)
                 if isinstance(img_or_path_or_d, str)
                 else img_or_path_or_d
             )
@@ -620,10 +618,10 @@ if __name__ == "__main__":
 
     T_camd_in_caml = caml.get_T_cam2_in_self(camd)
     key = caml.valid_keys_intersection(camd)[0]
-    imgl = imread(caml[key]["path"])
+    imgl = boxx.imread(caml[key]["path"])
     color_path_d = camd[key]["path"]
-    imgd = imread(color_path_d)
-    depthd = imread(color_path_d.replace("color.jpg", "depth.png"))
+    imgd = boxx.imread(color_path_d)
+    depthd = boxx.imread(color_path_d.replace("color.jpg", "depth.png"))
     depthd = np.float32(depthd / 1000)
 
     caml.vis_reproject_img_alignment(camd, depthd, imgd, imgl)
