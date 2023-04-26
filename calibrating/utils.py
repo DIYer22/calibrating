@@ -293,7 +293,15 @@ def interpolate_sparse2d(sparse2d, constrained_type=None, inter_type="lstsq"):
     """
     mask_to_uvzs = (sparse2d != 0) & np.isfinite(sparse2d)
     uvzs = arr2d_to_uvzs(sparse2d, mask_to_uvzs)
-    input_mask = np.zeros_like(sparse2d, np.uint8)
+    return interpolate_uvzs(uvzs, sparse2d.shape[:2], constrained_type, inter_type)
+
+
+def interpolate_uvzs(uvzs, hw=None, constrained_type=None, inter_type="lstsq"):
+    if hw is None:
+        hw = int(uvzs[:, 1].max()) + 2, int(uvzs[:, 0].max()) + 2
+    if not uvzs.size:
+        return np.zeros(hw, uvzs.dtype)
+    input_mask = np.zeros(hw, np.uint8)
     if constrained_type is not None and constrained_type:
         convex_hull = cv2.convexHull(np.int32(uvzs[:, :2].round()))
         cv2.drawContours(input_mask, [convex_hull], -1, 1, -1)
@@ -327,8 +335,24 @@ def interpolate_sparse2d(sparse2d, constrained_type=None, inter_type="lstsq"):
         output_uvzs = np.float32(input_uvs)
         output_uvzs[:, 2] = 1
         output_uvzs[:, 2] = output_uvzs @ abc
+    elif inter_type == "nearest":
+        from scipy.spatial import KDTree
 
-    dense = uvzs_to_arr2d(output_uvzs, sparse2d.shape, arr2d=sparse2d.copy())
+        # with boxx.timeit("KDTree"):
+        kdtree = KDTree(uvzs[:, :2])
+        output_uvzs = np.float32(input_uvs)
+
+        # with boxx.timeit("KDTree.query"):
+        distance, nearest_index = kdtree.query(output_uvzs[:, :2])
+        # output_uvzs[:, 2] = uvzs[nearest_index, 2]
+        distance_idx = distance < 1.5
+        output_uvzs[distance_idx, 2] = uvzs[nearest_index[distance_idx], 2]
+
+        # for i, uv in __import__("tqdm").tqdm(list(enumerate(output_uvzs[:, :2]))):
+        #     distance, nearest_index = kdtree.query(uv)
+        #     output_uvzs[i, 2] = uvzs[nearest_index, 2]
+    # dense = uvzs_to_arr2d(output_uvzs, sparse2d.shape, arr2d=sparse2d.copy())
+    dense = uvzs_to_arr2d(output_uvzs, hw)
     return dense
 
 
