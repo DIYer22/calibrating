@@ -469,6 +469,29 @@ class Cam(dict):
         new = type(self).load(dic)
         return new
 
+    def crop(self, udlr_or_slice, set_D_zero=True):
+        assert not self.D.any() or set_D_zero
+        cam_croped = self.copy()
+        if isinstance(udlr_or_slice[0], slice):
+            u, d, l, r = (
+                udlr_or_slice[0].start,
+                udlr_or_slice[0].stop,
+                udlr_or_slice[1].start,
+                udlr_or_slice[1].stop,
+            )
+        else:
+            u, d, l, r = udlr_or_slice
+        cam_croped.K[0, 2] -= l
+        cam_croped.K[1, 2] -= u
+        cam_croped.xy = r - l, d - u
+        if set_D_zero:
+            cam_croped.D = np.zeros_like(cam_croped.D)
+        return cam_croped
+
+    def resize(self, reize_arg):
+        # like boxx.resize's arg
+        raise NotImplemented("")
+
     @property
     def fx(self):
         return self.K[0, 0]
@@ -487,6 +510,7 @@ class Cam(dict):
 
     @property
     def fovs(self):
+        # TODO 两个点来通过 depth 1 的点云计算 fov, 并在 stereo.cam1.crop([0,900,0,1250]) 上验证是否刚好一半
         fovx = 2 * boxx.arctan(self.xy[0] / 2 / self.fx)
         fovy = 2 * boxx.arctan(self.xy[1] / 2 / self.fy)
         fov = 2 * boxx.arctan(

@@ -50,6 +50,28 @@ def R_to_deg(r_R_T):
     return deg
 
 
+def round_R(R):
+    """
+    Round a rotation matrix to the nearest axis-aligned rotation matrix.
+
+    This function finds the nearest rotation matrix where all rotation angles
+    are multiples of 90 degrees, and the rotated coordinate axes are parallel
+    to the original coordinate axes.
+
+    Parameters:
+    R (numpy.array): The input rotation matrix.
+
+    Returns:
+    R_round (numpy.array): The rounded, axis-aligned rotation matrix.
+    """
+    R_round = np.zeros((3, 3))
+    # Assign 1 to the maximum absolute value in each row of R
+    R_round[range(3), np.abs(R).argmax(1)] = 1
+    # Correct the sign of the elements in R_round based on the input R
+    R_round *= 1 - 2 * (R < 0)
+    return R_round
+
+
 def T_to_deg_distance(T, compare_T=None):
     """
     Translate the T matrix into items that humans can intuitively understand,
