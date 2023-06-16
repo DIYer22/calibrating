@@ -25,14 +25,14 @@ board = calibrating.Chessboard(checkboard=(7, 10), size_mm=22.564)
 caml = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_l.jpg"), board)
 camr = calibrating.Cam(glob(f"{checkboard_img_dir}/*/stereo_r.jpg"), board)
 camd = calibrating.Cam(glob(f"{checkboard_img_dir}/*/depth_cam_color.jpg"), board)
-built_in_intrinsics = dict(
+camd_built_in_intrinsics = dict(
     fx=1474.1182177692722,
     fy=1474.125874583105,
     cx=1037.599716850734,
     cy=758.3072639103259,
 )
 # depth need to be used in pairs with camera's built-in intrinsics
-camd.load(built_in_intrinsics)
+camd.load(camd_built_in_intrinsics)
 print(caml, camr, camd)
 # Using the browser to visualize the image_point and Rt of each calibration board in the camera's field of view
 shows([cam.vis_image_points_cover() for cam in (caml, camr, camd)])
