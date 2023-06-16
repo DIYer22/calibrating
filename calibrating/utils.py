@@ -327,9 +327,9 @@ def interpolate_uvzs(uvzs, hw=None, constrained_type=None, inter_type="lstsq"):
     if constrained_type is not None and constrained_type:
         convex_hull = cv2.convexHull(np.int32(uvzs[:, :2].round()))
         cv2.drawContours(input_mask, [convex_hull], -1, 1, -1)
-        input_uvs = arr2d_to_uvzs(input_mask, input_mask)
+        input_uvs = arr2d_to_uvzs(np.zeros_like(input_mask), input_mask)
     else:
-        input_uvs = arr2d_to_uvzs(input_mask)
+        input_uvs = arr2d_to_uvzs(np.zeros_like(input_mask))
 
     # TODO replaced by Solving equations of the z = ay+bx+c
     # fit uvzs linearly

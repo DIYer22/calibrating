@@ -111,8 +111,9 @@ class Chessboard(BaseBoard):
         self.object_points = self.set_origin_to_center(self.object_points)
 
     def find_image_points(self, d):
-        img = d["img"]
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = img = d["img"]
+        if img.ndim == 3:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         ret, corners = cv2.findChessboardCorners(gray, self.checkboard, None)
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.01)
         if ret:
