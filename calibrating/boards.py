@@ -94,6 +94,46 @@ class BaseBoard:
         else:
             return points - points.mean(0, keepdims=True)
 
+    @classmethod
+    def get_roi_class(cls, roi_udlr=None):
+        class BoardWithRoi(cls):
+            def find_image_points(self, dic):
+                raw_img = dic["img"]
+                h, w = raw_img.shape[:2]
+                if roi_udlr is not None and (
+                    isinstance(roi_udlr, slice) or isinstance(roi_udlr[0], slice)
+                ):
+                    slicee = roi_udlr
+                else:
+                    if roi_udlr is None:
+                        u, d, l, r = (
+                            h // 4,
+                            h * 3 // 4,
+                            w // 4,
+                            w * 3 // 4,
+                        )
+                    else:
+                        u, d, l, r = roi_udlr
+                    slicee = slice(u, d, None), slice(l, r, None)
+                dic["img"] = raw_img[slicee]
+                super().find_image_points(dic)
+                dic["img"] = raw_img
+                l, u = slicee[1].start or 0, slicee[0].start or 0
+                if l < 0:
+                    l = w + l
+                if u < 0:
+                    u = h + u
+                for key in ["image_points", "corners", "marker_corners"]:
+                    if key in dic:
+                        if isinstance(dic[key], dict):
+                            dic[key] = {k: v + (l, u) for k, v in dic[key].items()}
+                        else:
+                            dic[key] = np.ascontiguousarray(
+                                np.float32(dic[key] + (l, u))
+                            )
+
+        return BoardWithRoi
+
 
 class Chessboard(BaseBoard):
     def __init__(self, checkboard=(11, 8), size_mm=25):
