@@ -141,6 +141,21 @@ class Stereo:
             self.cam2.K, self.cam2.D, self.R2, self.K_target, xy, cv2.CV_32FC1
         )
 
+        valid_mask_from_remap = (
+            lambda mapx, mapy, x, y: (-0.5 < mapx)
+            & (mapx < x - 0.5)
+            & (-0.5 < mapy)
+            & (mapy < y - 0.5)
+        )
+
+        self.rectify_valid_mask1 = valid_mask_from_remap(
+            *self.undistort_rectify_map1, *self.cam1.xy
+        )
+        # self.rectify_valid_mask2 = valid_mask_from_remap(*self.undistort_rectify_map2, *self.cam2.xy)
+
+        # TODO add two info
+        # 1. sensor_area_usage% 2. stereo_matching_efficent_rate%
+
         # TODO rm
         # assert (utils.R_t_to_T(self.R2.T) @ utils.R_t_to_T(self.R, self.t))[
         #     0, 3
@@ -468,7 +483,7 @@ class Stereo:
             disparity = disparity["disparity"]
         if getattr(self, "translation_rectify_img"):
             disparity += self.min_disparity
-
+        disparity = self.rectify_valid_mask1 * disparity
         rectify_depth = self.disparity_to_depth(disparity)
 
         result.update(
