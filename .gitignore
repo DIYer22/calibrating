@@ -1,5 +1,6 @@
 ﻿tmp_*
 asset_*
+*_example_data
 
 # Python:
 *.py[cod]

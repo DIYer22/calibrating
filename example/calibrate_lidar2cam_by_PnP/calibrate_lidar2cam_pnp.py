@@ -42,7 +42,11 @@ def xyzs_to_dense_depth(xyzs, cam, T=None, rate=0.5, sparse=False):
 
 if __name__ == "__main__":
 
-    img_dir = "asset_calibrate_lidar2cam_by_PnP"
+    img_dir = "calibrate_lidar2cam_by_PnP_example_data"
+    if not os.path.exists(img_dir):
+        cmd = "git clone https://github.com/yl-data/calibrate_lidar2cam_by_PnP_example_data"
+        print("Not exists example_data, will automatic clone it by CMD:", cmd)
+        os.system(cmd)
 
     cam = calibrating.Cam.load(
         """
