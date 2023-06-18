@@ -1,4 +1,5 @@
 ﻿tmp_*
+asset_*
 
 # Python:
 *.py[cod]

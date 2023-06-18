@@ -318,7 +318,9 @@ def interpolate_sparse2d(sparse2d, constrained_type=None, inter_type="lstsq"):
     return interpolate_uvzs(uvzs, sparse2d.shape[:2], constrained_type, inter_type)
 
 
-def interpolate_uvzs(uvzs, hw=None, constrained_type=None, inter_type="lstsq"):
+def interpolate_uvzs(
+    uvzs, hw=None, constrained_type=None, inter_type="lstsq", distance=2
+):
     if hw is None:
         hw = int(uvzs[:, 1].max()) + 2, int(uvzs[:, 0].max()) + 2
     if not uvzs.size:
@@ -365,9 +367,9 @@ def interpolate_uvzs(uvzs, hw=None, constrained_type=None, inter_type="lstsq"):
         output_uvzs = np.float32(input_uvs)
 
         # with boxx.timeit("KDTree.query"):
-        distance, nearest_index = kdtree.query(output_uvzs[:, :2])
+        distance_, nearest_index = kdtree.query(output_uvzs[:, :2])
         # output_uvzs[:, 2] = uvzs[nearest_index, 2]
-        distance_idx = distance < 1.5
+        distance_idx = distance_ < distance
         output_uvzs[distance_idx, 2] = uvzs[nearest_index[distance_idx], 2]
 
         # for i, uv in __import__("tqdm").tqdm(list(enumerate(output_uvzs[:, :2]))):
@@ -506,6 +508,10 @@ def vis_point_uvs(
     convex_hull=False,
     full_connect=False,
 ):
+    if not isinstance(uvs, np.ndarray):
+        uvs = boxx.npa(uvs)
+    if uvs.ndim == 1:
+        uvs = uvs[None]
     if uvs.ndim == 3 and uvs.shape[1] == 1:
         uvs = uvs[:, 0]
     uvs = np.int32(uvs.round())
