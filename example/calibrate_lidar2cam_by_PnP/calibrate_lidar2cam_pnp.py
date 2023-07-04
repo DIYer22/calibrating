@@ -15,7 +15,9 @@ def xyzs_to_dense_depth(xyzs, cam, T=None, rate=0.5, sparse=False):
         xyzs = apply_T_to_point_cloud(T, xyzs)
     w, h = cam.xy
     xyzs_ = xyzs @ cam.K.T
-    xyzs_ = xyzs_[xyzs_[:, 2] > 0]
+    z_is_positive = xyzs_[:, 2] > 0
+    xyzs_ = xyzs_[z_is_positive]
+    xyzs = xyzs[z_is_positive]
     uvs = xyzs_[:, :2] / xyzs_[:, 2:3]
     idx = (uvs.min(-1) >= 0) & (uvs[:, 0] < w) & (uvs[:, 1] < h)
     uvs = uvs[idx]
@@ -97,9 +99,9 @@ xy:
 4_img.png, 158 493, 58 514
 5_img.png, 769 417, 788 430
 6_img.png, 198 584, 111 620
-7_img.png, 1222 552, 1265 572
 8_img.png, 649 294, 656 306
 9_img.png, 554 309, 556 321
+7_img.png, 1222 552, 1265 572
     """
 
     uvs = []
@@ -119,12 +121,12 @@ xy:
         xyz_matched = ([uvz] @ np.linalg.inv(cam_pc2depth.K).T)[0]
         uvs.append(uv_img)
         xyz_matcheds.append(xyz_matched)
-        # if xyz_matched[-1]: continue
         img = boxx.imread(img_path)
-        # img_vis = vis_point_uvs(uv_img, img,size=2.5)
-        # depth_vis = vis_point_uvs(uv_depth, boxx.imread(img_path.replace("img.png", "depth.png")), size=2.5)
-        # boxx.shows(img_vis, depth_vis)
-        # 1/0
+        img_vis = vis_point_uvs(uv_img, img, size=2.5)
+        depth_vis = vis_point_uvs(
+            uv_depth, boxx.imread(img_path.replace("img.png", "depth.png")), size=2.5
+        )
+        boxx.shows(img_vis, depth_vis)
     uvs = np.float64(uvs)
     xyz_matcheds = np.float64(xyz_matcheds)
     # get cam's T by solvePnP
@@ -137,7 +139,6 @@ xy:
 
     # %%
     depth = xyzs_to_dense_depth(xyzs, cam, T=T_lidar_in_cam, rate=1, sparse=1)
-    # depth[depth>20] = 0
     depth[depth < 3] = 0
 
     vis = vis_point_uvs(uvs, img, size=4.9, color=(255, 255, 0))
@@ -145,4 +146,12 @@ xy:
     uv_matcheds = apply_T_to_point_cloud(T_lidar_in_cam, xyz_matcheds) @ cam.K.T
     uv_matcheds = uv_matcheds[:, :2] / uv_matcheds[:, 2:]
     vis_undistort = vis_point_uvs(uv_matcheds, vis_undistort, size=2.1)
-    boxx.shows(vis_depth(depth), vis_undistort, png=True)
+    # boxx.shows(vis_depth(depth), vis_undistort, png=True)
+    boxx.shows(
+        np.where(
+            np.repeat(depth[:, :, np.newaxis], 3, axis=2),
+            vis_depth(depth),
+            vis_undistort,
+        ),
+        png=True,
+    )

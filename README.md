@@ -17,6 +17,7 @@ Calibrate camera's intrinsic/extristric, and build stereo depth camera with Open
 - Draw various calibration board images
 - Automatically ignore non-compliant images or markers
 - Convert to NeRF format json for 3D reconstruction
+- LiDAR-camera extrinsic calibration without chessboard, see [lidar2cam_by_PnP example](example/calibrate_lidar2cam_by_PnP)
 
 ## ▮ Install
 ```bash
