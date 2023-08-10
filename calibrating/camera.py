@@ -31,6 +31,7 @@ class Cam(dict):
         name=None,
         undistorted=False,
         enable_cache=False,
+        calibrate_flags=0,
     ):
         super().__init__()
         self.img_paths = img_paths
@@ -39,7 +40,7 @@ class Cam(dict):
         self.name = name or ("cam" + str(boxx.increase("caibrating.cam-name")))
         self.undistorted = undistorted
         self.enable_cache = enable_cache
-
+        self.calibrate_flags = calibrate_flags
         if img_paths is None:
             return
         # papre name to dict for calibrate
@@ -64,7 +65,7 @@ class Cam(dict):
         assert len(self.valid_keys), "No any valid image!"
         self.object_points = self._get_points_for_cv2("object_points")
         self.image_points = self._get_points_for_cv2("image_points")
-        flags = 0
+        flags = self.calibrate_flags
         if self.undistorted:
             flags = cv2.CALIB_ZERO_TANGENT_DIST + sum(
                 [
@@ -340,10 +341,15 @@ class Cam(dict):
         reproject_img = cv2.remap(img2, mapx, mapy, cv2.INTER_LINEAR)
         return utils.vis_align(undistorted_img1, reproject_img)
 
-    def vis_image_points_cover(self):
+    def vis_image_points_cover(self, draw_deviation=False):
         vis = utils._get_vis_background_of_cam(self)
         for uvs in self._get_points_for_cv2():
             vis = utils.vis_point_uvs(uvs, vis, convex_hull=True)
+        if draw_deviation:
+            for d in self.values():
+                if "T" in d:
+                    uvs = self.project_points(d["object_points"], d["T"])
+                    vis = utils.vis_point_uvs(uvs, vis, color=(0, 255, 255))
 
         all_object_points = np.concatenate(self._get_points_for_cv2("object_points"))
         object_points = np.unique(all_object_points, axis=0)
