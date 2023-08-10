@@ -38,6 +38,10 @@ class Stereo:
         xy_target=None,
         K_target=1,
     ):
+    """
+    K_target: float or np.array(3, 3)
+        The new camera intrinsic. If type is float, will multiplying on fx, fy
+    """
         self.xy_target = xy_target
         self.K_target = K_target
         if cam1 is None:
@@ -119,26 +123,45 @@ class Stereo:
         self.retval = retval
 
     def _get_undistort_rectify_map(self):
-
+        self.stereo_recitfy()
         if self.xy_target is None:
             self.xy_target = self.cam1.xy
         if isinstance(self.xy_target, (int, float)):
             self.xy_target = [int(round(i * self.xy_target)) for i in self.cam1.xy]
-        xy = tuple(self.xy_target)
+        self.xy = xy = tuple(self.xy_target)
+        self.K = self.K_target
         if isinstance(self.K_target, (int, float)):
-            K_target = self.K_target
-            self.K_target = self.cam1.K.copy()
-            self.K_target[:2, :2] *= K_target
-            self.K_target[:2, 2] += (np.array(xy) - self.cam1.xy) / 2
+            self.K = self.cam1.K.copy()
+            self.K[:2, :2] *= self.K_target
+            self.K[:2, 2] += (np.array(xy) - self.cam1.xy) / 2
+        if "better_cx_cy" and not isinstance(self.K_target, np.ndarray):
 
-        self.stereo_recitfy()
+            def get_center(xy, K, R):
+                corner_uvs_real = [
+                    [0, 0, 1],
+                    [xy[0], 0, 1],
+                    list(xy) + [1],
+                    [0, xy[1], 1],
+                ]
+                corner_xyz_old = np.array(corner_uvs_real) @ np.linalg.inv(K).T
+                corner_xyz = corner_xyz_old @ R.T
+                corner_uvs = corner_xyz @ self.K.T
+                corner_uvs = corner_uvs[:, :2] / corner_uvs[:, 2:]
+                center_uv = corner_uvs.mean(0)
+                center_to_origin_uv = center_uv - self.K[:2, 2]
+                return center_to_origin_uv
+
+            center1 = get_center(self.cam1.xy, self.cam1.K, self.R1)
+            center2 = get_center(self.cam2.xy, self.cam2.K, self.R2)
+            center = (center1 + center2) / 2
+            self.K[:2, 2] = np.array(xy) / 2 - center
 
         self.undistort_rectify_map1 = cv2.initUndistortRectifyMap(
-            self.cam1.K, self.cam1.D, self.R1, self.K_target, xy, cv2.CV_32FC1
+            self.cam1.K, self.cam1.D, self.R1, self.K, xy, cv2.CV_32FC1
         )
 
         self.undistort_rectify_map2 = cv2.initUndistortRectifyMap(
-            self.cam2.K, self.cam2.D, self.R2, self.K_target, xy, cv2.CV_32FC1
+            self.cam2.K, self.cam2.D, self.R2, self.K, xy, cv2.CV_32FC1
         )
 
         valid_mask_from_remap = (
@@ -360,14 +383,6 @@ class Stereo:
         return getattr(self, "max_depth", self.MAX_DEPTH)
 
     @property
-    def xy(self):
-        return self.cam1.xy
-
-    @property
-    def K(self):
-        return self.cam1.K
-
-    @property
     def D(self):
         return np.zeros((1, 5))
 
@@ -376,12 +391,12 @@ class Stereo:
         return np.sum(self.t**2) ** 0.5
 
     def depth_to_disparity(self, depth):
-        fx = self.K_target[0, 0]
+        fx = self.K[0, 0]
         disparity = 1.0 * self.baseline * fx / depth
         return disparity
 
     def disparity_to_depth(self, disparity):
-        fx = self.K_target[0, 0]
+        fx = self.K[0, 0]
         depth = 1.0 * self.baseline * fx / disparity
         depth[depth > self.get_max_depth()] = 0
         return depth
@@ -389,7 +404,7 @@ class Stereo:
     def unrectify_depth(self, depth):
         maps = getattr(self, "_unrectify_depth_maps", None)
         re = utils.rotate_depth_by_remap(
-            self.K_target,
+            self.K,
             self.R1.T,
             depth,
             maps=maps,

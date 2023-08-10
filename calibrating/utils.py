@@ -828,7 +828,7 @@ class VideoWriter:
                 ts = sorted(self.bgr_buffer)
                 t1, t2 = ts[0], ts[-1]
                 self.fps = (len(self.bgr_buffer) - 1) / (t2 - t1)
-                self.fps = min(self.fps, 1536)
+                self.fps = max(min(self.fps, 1536), 1)
             else:
                 self.fps = 1
         self.fps = int(round(self.fps))
