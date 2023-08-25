@@ -38,10 +38,10 @@ class Stereo:
         xy_target=None,
         K_target=1,
     ):
-    """
-    K_target: float or np.array(3, 3)
-        The new camera intrinsic. If type is float, will multiplying on fx, fy
-    """
+        """
+        K_target: float or np.array(3, 3)
+            The new camera intrinsic. If type is float, will multiplying on fx, fy
+        """
         self.xy_target = xy_target
         self.K_target = K_target
         if cam1 is None:
@@ -267,6 +267,8 @@ class Stereo:
         if path_or_str_or_dict is None:
             path_or_str_or_dict = self
             self = Stereo()
+        if isinstance(path_or_str_or_dict, Stereo):
+            return path_or_str_or_dict.copy()
         if not isinstance(path_or_str_or_dict, (list, dict)):
             path_or_str = path_or_str_or_dict
             if "\n" in path_or_str:
@@ -315,8 +317,7 @@ class Stereo:
     def shows(cls, *l, **kv):
         vis = cls.vis(*l, **kv)
 
-        idx = vis.shape[1] // 2
-        viss = [vis[:, :idx], vis[:, idx:]]
+        viss = np.split(vis, 2, axis=1)
         boxx.shows(viss)
         return viss
 
@@ -377,7 +378,7 @@ class Stereo:
 
     __repr__ = __str__
 
-    MAX_DEPTH = 10
+    MAX_DEPTH = 1000
 
     def get_max_depth(self):
         return getattr(self, "max_depth", self.MAX_DEPTH)
@@ -399,6 +400,7 @@ class Stereo:
         fx = self.K[0, 0]
         depth = 1.0 * self.baseline * fx / disparity
         depth[depth > self.get_max_depth()] = 0
+        depth[depth < 0] = 0
         return depth
 
     def unrectify_depth(self, depth):

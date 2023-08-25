@@ -15,6 +15,9 @@ eps = 1e-8
 def R_t_to_T(R, t=None):
     if t is None:
         t = np.zeros((3,))
+    R = np.float32(R)
+    if R.size == 3:
+        return r_t_to_T(R, t)
     T = np.zeros((4, 4))
     T[:3, :3] = R
     T[:3, -1] = np.array(t).squeeze()

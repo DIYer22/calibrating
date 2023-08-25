@@ -434,8 +434,9 @@ class Cam(dict):
                     dic = yaml.safe_load(f)
         else:
             dic = copy.deepcopy(path_or_str_or_dict)
-        dic["K"] = intrinsic_format_conversion(dic)
-        [dic.pop(k) for k in ("fx", "fy", "cx", "cy")]
+        if "K" not in dic:
+            dic["K"] = intrinsic_format_conversion(dic)
+            [dic.pop(k) for k in ("fx", "fy", "cx", "cy")]
         dic["D"] = np.float64(dic["D"]) if "D" in dic else np.zeros((1, 5))
         dic["xy"] = tuple(dic.get("xy", getattr(self, "xy", "")))
         assert len(dic["xy"]), "Need xy"
