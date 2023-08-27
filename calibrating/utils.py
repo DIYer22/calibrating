@@ -77,26 +77,25 @@ def round_R(R):
 
 def perturb_T(T, deg_range=5, t_range=None, t_rate=0.05):
     if t_range is None:
-        t_range = t_rate*np.linalg.norm(T[:3,3])
+        t_range = t_rate * np.linalg.norm(T[:3, 3])
     t_perturb = np.random.uniform(-t_range, t_range, size=(3,))
-    
-    rad_range =  deg_range * np.pi / 180
-    r = np.random.uniform(-rad_range, rad_range, size=(3,))*100
-    r_perturb = r/np.linalg.norm(r) *( np.linalg.norm(r)%rad_range)
-    R_new = cv2.Rodrigues(r_perturb)[0]@T[:3,:3]
-    T_perturbed = R_t_to_T(R_new, T[:3,3]+t_perturb)
+
+    rad_range = deg_range * np.pi / 180
+    r = np.random.uniform(-rad_range, rad_range, size=(3,)) * 100
+    r_perturb = r / np.linalg.norm(r) * (np.linalg.norm(r) % rad_range)
+    R_new = cv2.Rodrigues(r_perturb)[0] @ T[:3, :3]
+    T_perturbed = R_t_to_T(R_new, T[:3, 3] + t_perturb)
     return T_perturbed
 
 
 def reflex_T(T_world, mirror_world=None):
     T_reflex = np.eye(4)
-    T_reflex[2,2] = -1
+    T_reflex[2, 2] = -1
     if mirror_world is None:
         mirror_world = np.eye(4)
-    T_refled_in_mirror = T_reflex@np.linalg.inv(mirror_world)@T_world
-    T_refled_in_world = mirror_world@T_refled_in_mirror
+    T_refled_in_mirror = T_reflex @ np.linalg.inv(mirror_world) @ T_world
+    T_refled_in_world = mirror_world @ T_refled_in_mirror
     return T_refled_in_world
-    
 
 
 def T_to_deg_distance(T, compare_T=None):
@@ -475,7 +474,7 @@ def vis_depth(depth, slicen=0, fix_range=None, colormap=None):
     return vis
 
 
-def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True, colorbar='auto'):
+def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True, colorbar="auto"):
     """
     Pretty vis of depth l1, which will ignore missing depth.
     Could distinguish missing depth(black) and l1==0(grey)
@@ -493,41 +492,45 @@ def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True, colorbar='auto'):
         The default None is -0.05 or top 5% as overexposed.
     colorbar : str or None, optional
         Location of the colorbar, 'u', 'd', 'l', 'r' for up, down, left, right.
-        The default is shorter(left, down). 
+        The default is shorter(left, down).
     """
     h, w = re.shape
-    
+
     GREY_CLIP = 0.1  # how_grey_to_distinguish missing depth and l1==0
     if isinstance(gt, (int, float, np.number)):
         gt = np.ones_like(re) * gt
 
     mask_valid = np.bool8(re) & np.bool8(gt)
     l1 = (re - gt) * mask_valid
-    
+
     if colorbar:
         # TODO: add scale marker and value
         if colorbar.startswith("a"):
-            colorbar = dict(zip(re.shape,"ld"))[min(re.shape)]
-        colorbar_width = sum(re.shape)//100
+            colorbar = dict(zip(re.shape, "ld"))[min(re.shape)]
+        colorbar_width = sum(re.shape) // 100
         colorbar_length = w
-        if colorbar == 'u':
+        if colorbar == "u":
             colorbar_start = (0, 0)
-        elif colorbar == 'd':
+        elif colorbar == "d":
             colorbar_start = (h - colorbar_width, 0)
-        elif colorbar == 'l':
+        elif colorbar == "l":
             colorbar_start = (0, 0)
             colorbar_length = h
-        elif colorbar == 'r':
+        elif colorbar == "r":
             colorbar_start = (0, w - colorbar_width)
             colorbar_length = h
-    
-        colorbar_patch = np.linspace(-max_l1*1.1, max_l1*1.1, colorbar_length).reshape((-1, 1))
+
+        colorbar_patch = np.linspace(
+            -max_l1 * 1.1, max_l1 * 1.1, colorbar_length
+        ).reshape((-1, 1))
         colorbar_patch = np.tile(colorbar_patch, (1, colorbar_width))
-        colorbar_patch = colorbar_patch.T if colorbar in ('u', 'd') else colorbar_patch
-        slicee = boxx.sliceInt[colorbar_start[0]:colorbar_start[0]+colorbar_width, :colorbar_length]
+        colorbar_patch = colorbar_patch.T if colorbar in ("u", "d") else colorbar_patch
+        slicee = boxx.sliceInt[
+            colorbar_start[0] : colorbar_start[0] + colorbar_width, :colorbar_length
+        ]
         l1[slicee] = colorbar_patch
         mask_valid[slicee] = True
-        
+
     abs_l1 = np.abs(l1)
     if max_l1 is None:
         max_l1 = -0.05 if overexposed else 0
