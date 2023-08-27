@@ -475,7 +475,7 @@ def vis_depth(depth, slicen=0, fix_range=None, colormap=None):
     return vis
 
 
-def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True):
+def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True, colorbar='auto'):
     """
     Pretty vis of depth l1, which will ignore missing depth.
     Could distinguish missing depth(black) and l1==0(grey)
@@ -491,13 +491,43 @@ def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True):
         max_l1 to vis. area of abs(l1) > max_l1 will overexposed
         if max_l1 < 0 and in (-1 ~ 0), the max_l1 = top k% of l1
         The default None is -0.05 or top 5% as overexposed.
+    colorbar : str or None, optional
+        Location of the colorbar, 'u', 'd', 'l', 'r' for up, down, left, right.
+        The default is shorter(left, down). 
     """
+    h, w = re.shape
+    
     GREY_CLIP = 0.1  # how_grey_to_distinguish missing depth and l1==0
     if isinstance(gt, (int, float, np.number)):
         gt = np.ones_like(re) * gt
 
     mask_valid = np.bool8(re) & np.bool8(gt)
     l1 = (re - gt) * mask_valid
+    
+    if colorbar:
+        # TODO: add scale marker and value
+        if colorbar.startswith("a"):
+            colorbar = dict(zip(re.shape,"ld"))[min(re.shape)]
+        colorbar_width = sum(re.shape)//100
+        colorbar_length = w
+        if colorbar == 'u':
+            colorbar_start = (0, 0)
+        elif colorbar == 'd':
+            colorbar_start = (h - colorbar_width, 0)
+        elif colorbar == 'l':
+            colorbar_start = (0, 0)
+            colorbar_length = h
+        elif colorbar == 'r':
+            colorbar_start = (0, w - colorbar_width)
+            colorbar_length = h
+    
+        colorbar_patch = np.linspace(-max_l1*1.1, max_l1*1.1, colorbar_length).reshape((-1, 1))
+        colorbar_patch = np.tile(colorbar_patch, (1, colorbar_width))
+        colorbar_patch = colorbar_patch.T if colorbar in ('u', 'd') else colorbar_patch
+        slicee = boxx.sliceInt[colorbar_start[0]:colorbar_start[0]+colorbar_width, :colorbar_length]
+        l1[slicee] = colorbar_patch
+        mask_valid[slicee] = True
+        
     abs_l1 = np.abs(l1)
     if max_l1 is None:
         max_l1 = -0.05 if overexposed else 0
