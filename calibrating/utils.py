@@ -75,6 +75,30 @@ def round_R(R):
     return R_round
 
 
+def perturb_T(T, deg_range=5, t_range=None, t_rate=0.05):
+    if t_range is None:
+        t_range = t_rate*np.linalg.norm(T[:3,3])
+    t_perturb = np.random.uniform(-t_range, t_range, size=(3,))
+    
+    rad_range =  deg_range * np.pi / 180
+    r = np.random.uniform(-rad_range, rad_range, size=(3,))*100
+    r_perturb = r/np.linalg.norm(r) *( np.linalg.norm(r)%rad_range)
+    R_new = cv2.Rodrigues(r_perturb)[0]@T[:3,:3]
+    T_perturbed = R_t_to_T(R_new, T[:3,3]+t_perturb)
+    return T_perturbed
+
+
+def reflex_T(T_world, mirror_world=None):
+    T_reflex = np.eye(4)
+    T_reflex[2,2] = -1
+    if mirror_world is None:
+        mirror_world = np.eye(4)
+    T_refled_in_mirror = T_reflex@np.linalg.inv(mirror_world)@T_world
+    T_refled_in_world = mirror_world@T_refled_in_mirror
+    return T_refled_in_world
+    
+
+
 def T_to_deg_distance(T, compare_T=None):
     """
     Translate the T matrix into items that humans can intuitively understand,
