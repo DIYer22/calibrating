@@ -572,6 +572,22 @@ class Cam(dict):
         return caml, camr, camd
 
     @classmethod
+    def get_example_cam(cls, xy=(1280, 720), fov=60, D=None):
+        s = max(xy)
+        fxy = s / 2 / boxx.tan(fov / 2)
+        return cls.load(
+            dict(
+                fx=fxy,
+                fy=fxy,
+                cx=xy[0] / 2,
+                cy=xy[1] / 2,
+                D=np.zeros((1, 5)) if D is None else D,
+                xy=tuple(xy),
+                name=f"example_fov{fov}",
+            )
+        )
+
+    @classmethod
     def get_example_720p(cls):
         return cls.load(
             dict(
