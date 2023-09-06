@@ -532,6 +532,13 @@ class Stereo:
             )
         return result
 
+    def get_depth_by_matched_uvs(self, uvs1, uvs2):
+        from .epipolar_geometry import uvs_to_xyz_noramls, matched_xyz_normals_to_zs
+
+        xyz_normals1 = uvs_to_xyz_noramls(uvs1, self.cam1.K)
+        xyz_normals2 = uvs_to_xyz_noramls(uvs2, self.cam2.K)
+        return matched_xyz_normals_to_zs(xyz_normals1, xyz_normals2)
+
 
 if __name__ == "__main__":
     from boxx import *
