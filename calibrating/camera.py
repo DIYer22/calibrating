@@ -425,6 +425,8 @@ class Cam(dict):
         if path_or_str_or_dict is None:
             path_or_str_or_dict = self
             self = Cam()
+        if isinstance(path_or_str_or_dict, Cam):
+            return path_or_str_or_dict.copy()
         if not isinstance(path_or_str_or_dict, (list, dict)):
             path_or_str = path_or_str_or_dict
             if "\n" in path_or_str:

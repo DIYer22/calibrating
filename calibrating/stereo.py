@@ -285,6 +285,11 @@ class Stereo:
         else:
             self.cam1 = Cam.load(dic.pop("cam1"))
             self.cam2 = Cam.load(dic.pop("cam2"))
+        if "R" not in dic and "T" in dic:
+            dic["r"], dic["t"] = utils.T_to_r_t(dic.pop("T"))
+        if "R" not in dic and "r" in dic:
+            dic["R"] = cv2.Rodrigues(dic.pop("r"))[0]
+        dic.setdefault("R", np.eye(3))
         self.__dict__.update(
             {k: boxx.npa(v) if k in self.DUMP_ATTRS else v for k, v in dic.items()}
         )
@@ -386,6 +391,10 @@ class Stereo:
     @property
     def D(self):
         return np.zeros((1, 5))
+
+    @property
+    def T(self):
+        return utils.R_t_to_T(self.R, self.t)
 
     @property
     def baseline(self):
