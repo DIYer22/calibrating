@@ -13,7 +13,6 @@ def compute_essential_matrix(xyz1, xyz2):
     assert xyz1.shape == xyz2.shape, "The shapes of input points must be the same."
     n = xyz1.shape[0]
     assert n >= 8, "At least 8 point pairs are required."
-
     # 构建矩阵A
     A = np.zeros((n, 9))
     for i in range(n):
@@ -30,36 +29,29 @@ def compute_essential_matrix(xyz1, xyz2):
             y1 * z2,
             z1 * z2,
         ]
-
     # 使用SVD分解求解线性方程组Ax = 0
     _, _, Vt = np.linalg.svd(A)
     E = Vt[-1].reshape(3, 3)
-
     # 将E矩阵强制成秩为2
     U, S, Vt = np.linalg.svd(E)
     S[2] = 0
     E = np.dot(U, np.dot(np.diag(S), Vt))
-
     return E
 
 
 def decompose_essential_matrix(E):
     # 使用 SVD 对本质矩阵进行分解
     U, _, Vt = np.linalg.svd(E)
-
     # 创建一个 W 矩阵，用于计算旋转矩阵
     W = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
-
     # 计算两种可能的旋转矩阵
     R1 = np.dot(U, np.dot(W, Vt))
     R2 = np.dot(U, np.dot(W.T, Vt))
-
     # 确保 R1 和 R2 的行列式大于 0
     if np.linalg.det(R1) < 0:
         R1 = -R1
     if np.linalg.det(R2) < 0:
         R2 = -R2
-
     # 计算两种可能的平移向量
     t1 = U[:, 2]
     t2 = -U[:, 2]
@@ -76,7 +68,7 @@ def normal_equation(X, Y):
         Y = Y[:, None]
     if X.ndim == 2:
         return inv(X.T @ X) @ X.T @ Y
-    # Batch
+    # Batch computing
     if Y.ndim == 2:
         Y = np.array([Y] * len(X))
     XtX = np.einsum("bij,bjk->bik", X.transpose(0, 2, 1), X)
@@ -95,7 +87,6 @@ def matched_xyz_normals_to_zs(xyz_normals1, xyz_normals2, T_1to2):
     X = np.concatenate(
         ((-xyz_normals1 @ T_1to2[:3, :3].T)[:, :, None], xyz_normals2[:, :, None]), 2
     )
-    # X = X[0]
     Y = T_1to2[:3, 3:]
     thetas = normal_equation(X, Y)
     zs1, zs2 = np.squeeze(thetas).T
@@ -157,7 +148,6 @@ if __name__ == "__main__":
     # img1_undistort = cv2.undistort(img1, cam1.K, cam1.D)
     # img2_undistort = cv2.undistort(img2, cam2.K, cam2.D)
     stereo = Stereo(cam1, cam2)
-
     # {"K1":stereo.K.tolist(),"K2":stereo.K.tolist(), "uv1uv2": np.random.randint(1,1024,(20,4)).tolist()}
     uv1, uv2, obj = stereo.get_conjoint_points()
     uv1_distort = np.concatenate(uv1, 0)
