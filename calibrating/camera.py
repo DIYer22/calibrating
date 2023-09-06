@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 with boxx.inpkg():
     from . import utils
-    from .stereo import Stereo
+    from .stereo_camera import Stereo
     from .__info__ import __version__
     from .utils import r_t_to_T, intrinsic_format_conversion, prepare_example_data_dir
     from .reconstruction import convert_cam_to_nerf_json

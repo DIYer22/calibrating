@@ -5,7 +5,7 @@ import numpy as np
 
 with boxx.inpkg():
     from .camera import Cam
-    from .stereo import Stereo
+    from .stereo_camera import Stereo
     from .utils import inv, R_t_to_T, apply_T_to_point_cloud
 
 
