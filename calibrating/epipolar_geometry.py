@@ -176,6 +176,29 @@ def filter_overlap_uvs(uvs1, uvs2):
     return uvs1[mask], uvs2[mask]
 
 
+def matching_uvs(uvs1, uvs2, MAX_DISTANCE=1, MIN_MATCHED_PIXELS=10):
+    from scipy.spatial import KDTree
+
+    kd_tree = KDTree(uvs1)
+    distance, nearst_idx = kd_tree.query(uvs2)
+
+    mask = distance < MAX_DISTANCE
+
+    k = int((uvs1.size + uvs2.size) / 2 * 0.1)
+
+    if mask.sum() > MIN_MATCHED_PIXELS and mask.sum() > k:
+        arg1 = np.argpartition(distance, k)[:k]
+        mask_ = mask * False
+        mask_[arg1] = mask[arg1]
+        mask = mask_
+    if mask.sum() < MIN_MATCHED_PIXELS:
+        assert mask.sum() >= MIN_MATCHED_PIXELS, mask.sum()
+
+    return dict(
+        uv_match_idx2=np.arange(0, mask.size)[mask], uv_match_idx1=nearst_idx[mask]
+    )
+
+
 if __name__ == "__main__":
     from boxx import *
     from calibrating import get_test_cams, T_to_deg_distance, perturb_T
@@ -255,29 +278,9 @@ if __name__ == "__main__":
     uvs1 = stereo1.epipolar["uvs" + s1_suffix]
     uvs2 = stereo2.epipolar["uvs" + s2_suffix]
 
-    from scipy.spatial import KDTree
-
-    kd_tree = KDTree(uvs1)
-    distance, nearst_idx = kd_tree.query(uvs2)
-    MAX_DISTANCE = 1
-    mask = distance < MAX_DISTANCE
-
-    k = int((uvs1.size + uvs2.size) / 2 * 0.1)
-
-    if mask.sum() > 10 and mask.sum() > k:
-        arg1 = np.argpartition(distance, k)[:k]
-        mask_ = mask * False
-        mask_[arg1] = mask[arg1]
-        mask = mask_
-    MIN_MATCHED_PIXELS = 10
-    if mask.sum() < MIN_MATCHED_PIXELS:
-        assert mask.sum() >= MIN_MATCHED_PIXELS, mask.sum()
-
-    uv_match_idx2 = np.arange(0, mask.size)[mask]
-    uv_match_idx1 = nearst_idx[mask]
-
-    z_matched1 = stereo1.epipolar["zs" + s1_suffix][uv_match_idx1]
-    z_matched2 = stereo2.epipolar["zs" + s2_suffix][uv_match_idx2]
+    mated = matching_uvs(uvs1, uvs2)
+    z_matched1 = stereo1.epipolar["zs" + s1_suffix][mated["uv_match_idx1"]]
+    z_matched2 = stereo2.epipolar["zs" + s2_suffix][mated["uv_match_idx2"]]
     stereo2.t *= z_matched1.mean() / z_matched2.mean()
 
     #%%
