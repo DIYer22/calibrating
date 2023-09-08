@@ -13,6 +13,10 @@ def compute_essential_matrix(xyzs1, xyzs2):
     assert xyzs1.shape == xyzs2.shape, "The shapes of input points must be the same."
     n = xyzs1.shape[0]
     assert n >= 8, "At least 8 point pairs are required."
+    if n > 100:
+        xyzs1 = xyzs1[:: n // 100]
+        xyzs2 = xyzs2[:: n // 100]
+        n = xyzs1.shape[0]
     # 构建矩阵A
     A = np.zeros((n, 9))
     for i in range(n):
@@ -134,8 +138,8 @@ class EssentialMatrixStereo(Stereo):
             dict(
                 R=self.R,
                 t=self.t,
-                cam1=dict(xy=xy1, K=K1, name=name1),
-                cam2=dict(xy=xy2, K=K2, name=name2),
+                cam1=dict(xy=xy1, K=K1, name=str(name1)),
+                cam2=dict(xy=xy2, K=K2, name=str(name2)),
             )
         )
         self.epipolar = zs
@@ -161,6 +165,42 @@ class EssentialMatrixStereo(Stereo):
         self.load(dic)
         return self
 
+    def align_scale_with(stereo1, stereo2, matched=None):
+        names1 = stereo1.cam1.name, stereo1.cam2.name
+        names2 = stereo2.cam1.name, stereo2.cam2.name
+        assert len(set(names1)) == 2, names1
+        assert len(set(names2)) == 2, names2
+        assert (
+            len(set(names1 + names2)) != 2
+        ), f"names1={names1}, names2={names2} has exactly the same names!"
+        assert (
+            len(set(names1 + names2)) != 4
+        ), f"names1={names1}, names2={names2} has total different names!"
+        for name in names1:
+            if name in names2:
+                break
+        s1_suffix = str(names1.index(name) + 1)
+        s2_suffix = str(names2.index(name) + 1)
+        if matched is None:
+            uvs1 = stereo1.epipolar["uvs" + s1_suffix]
+            uvs2 = stereo2.epipolar["uvs" + s2_suffix]
+            matched = matching_uvs_in_one_img(uvs1, uvs2)
+        assert len(matched["uv_match_idx1"]) > 10
+        z_matched1 = stereo1.epipolar["zs" + s1_suffix][matched["uv_match_idx1"]]
+        z_matched2 = stereo2.epipolar["zs" + s2_suffix][matched["uv_match_idx2"]]
+        rate = z_matched2.mean() / z_matched1.mean()
+        stereo1.set_scale(rate)
+
+    def set_scale(self, rate):
+        self.t = self.t * rate
+        for key in [
+            "z1",
+            "z2",
+            "zs1",
+            "zs2",
+        ]:
+            self.epipolar[key] *= rate
+
 
 def filter_overlap_uvs(uvs1, uvs2):
     _, inverse, count_ = np.unique(
@@ -176,7 +216,7 @@ def filter_overlap_uvs(uvs1, uvs2):
     return uvs1[mask], uvs2[mask]
 
 
-def matching_uvs(uvs1, uvs2, MAX_DISTANCE=1, MIN_MATCHED_PIXELS=10):
+def matching_uvs_in_one_img(uvs1, uvs2, MAX_DISTANCE=1, MIN_MATCHED_PIXELS=10):
     from scipy.spatial import KDTree
 
     kd_tree = KDTree(uvs1)
@@ -259,34 +299,13 @@ if __name__ == "__main__":
     # stereo23.shows((*stereo23.rectify(img2, img3)))
     # estereo23.shows((*estereo23.rectify(img2, img3)))
 
-    stereo1, stereo2 = estereo, estereo23
-    names1 = stereo1.cam1.name, stereo1.cam2.name
-    names2 = stereo2.cam1.name, stereo2.cam2.name
-    assert len(set(names1)) == 2, names1
-    assert len(set(names2)) == 2, names2
-    assert (
-        len(set(names1 + names2)) != 2
-    ), f"names1={names1}, names2={names2} has exactly the same names!"
-    assert (
-        len(set(names1 + names2)) != 4
-    ), f"names1={names1}, names2={names2} has total different names!"
-    for name in names1:
-        if name in names2:
-            break
-    s1_suffix = str(names1.index(name) + 1)
-    s2_suffix = str(names2.index(name) + 1)
-    uvs1 = stereo1.epipolar["uvs" + s1_suffix]
-    uvs2 = stereo2.epipolar["uvs" + s2_suffix]
-
-    mated = matching_uvs(uvs1, uvs2)
-    z_matched1 = stereo1.epipolar["zs" + s1_suffix][mated["uv_match_idx1"]]
-    z_matched2 = stereo2.epipolar["zs" + s2_suffix][mated["uv_match_idx2"]]
-    stereo2.t *= z_matched1.mean() / z_matched2.mean()
-
+    estereo23.align_scale_with(estereo)
+    estereo23.align_scale_with(estereo)
     #%%
     stereo13 = Stereo(cam1, cam3)
-    stereo13_re = Stereo.load(dict(T=stereo2.T @ stereo1.T, cam1=cam1, cam2=cam3))
+    stereo13_re = Stereo.load(dict(T=estereo23.T @ estereo.T, cam1=cam1, cam2=cam3))
 
     print(stereo13, stereo13_re)
+    print(T_to_deg_distance(stereo13.T, stereo13_re.T))
     stereo13.shows((*stereo13.rectify(img1, img3)))
     stereo13_re.shows((*stereo13_re.rectify(img1, img3)))
