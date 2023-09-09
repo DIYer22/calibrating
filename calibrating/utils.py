@@ -120,6 +120,15 @@ def T_to_deg_distance(T, compare_T=None):
     return dict(deg=deg, distance=distance, r=r, t=t)
 
 
+def T_to_str(T, compare_T=None):
+    is_deg_distance = isinstance(T, dict) and "deg" in T
+    if is_deg_distance:
+        deg_dis_dic = T
+    else:
+        deg_dis_dic = T_to_deg_distance(T, compare_T)
+    return f"r= {boxx.strnum(deg_dis_dic['deg'])}°, t= {boxx.strnum(deg_dis_dic['distance'])}m"
+
+
 def convert_points_for_cv2(dic_or_np):
     point = dic_or_np
     if isinstance(point, dict):
