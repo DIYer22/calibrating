@@ -16,7 +16,7 @@ with boxx.inpkg():
     from .stereo_camera import Stereo
     from .__info__ import __version__
     from .utils import r_t_to_T, intrinsic_format_conversion, prepare_example_data_dir
-    from .reconstruction import convert_cam_to_nerf_json
+    from .reconstruction_with_board import convert_cam_to_nerf_json
     from .boards import Chessboard, BaseBoard
 
 TEMP = __import__("tempfile").gettempdir()

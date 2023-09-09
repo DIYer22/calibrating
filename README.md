@@ -90,7 +90,7 @@ cam.convert_to_nerf_json("transforms.json")
 
 Example of converting [ChArUco images](https://github.com/yl-data/calibrating_example_data/tree/master/reconstruction_with_marker_board) to NeRF's transforms.json:
 ```bash
-python calibrating/reconstruction.py 
+python calibrating/reconstruction_with_board.py 
 ```
 
 <img alt="image" src="https://user-images.githubusercontent.com/10448025/192988171-40d51b15-e761-4fe6-9df4-0e2b509a79ec.png" width="400"> <img alt="instant ngp" src="https://user-images.githubusercontent.com/10448025/192993202-84ccab21-1f9d-4b3c-8dc7-090c121bb84e.jpg" width="400">     

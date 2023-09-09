@@ -8,7 +8,7 @@ from functools import wraps
 with boxx.inpkg():
     from .camera import Cam
     from .utils import mean_Ts
-    from .reconstruction import convert_cam_to_nerf_json
+    from .reconstruction_with_board import convert_cam_to_nerf_json
 
 
 class MultiBoardsCam(Cam):

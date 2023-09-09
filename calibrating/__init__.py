@@ -6,7 +6,7 @@ from .camera import *
 from .stereo_camera import *
 from .stereo_matching import *
 from .boards import *
-from .reconstruction import *
+from .reconstruction_with_board import *
 from .multi_boards import *
 from .feature_libs import *
 from .epipolar_geometry import *
