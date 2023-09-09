@@ -216,7 +216,7 @@ def filter_overlap_uvs(uvs1, uvs2):
     return uvs1[mask], uvs2[mask]
 
 
-def matching_uvs_in_one_img(uvs1, uvs2, MAX_DISTANCE=1, MIN_MATCHED_PIXELS=10):
+def matching_uvs_in_one_img_precise(uvs1, uvs2, MAX_DISTANCE=1, MIN_MATCHED_PIXELS=10):
     from scipy.spatial import KDTree
 
     kd_tree = KDTree(uvs1)
@@ -232,10 +232,42 @@ def matching_uvs_in_one_img(uvs1, uvs2, MAX_DISTANCE=1, MIN_MATCHED_PIXELS=10):
         mask_[arg1] = mask[arg1]
         mask = mask_
     if mask.sum() < MIN_MATCHED_PIXELS:
-        assert mask.sum() >= MIN_MATCHED_PIXELS, mask.sum()
-
+        return {}
     return dict(
         uv_match_idx2=np.arange(0, mask.size)[mask], uv_match_idx1=nearst_idx[mask]
+    )
+
+
+def matching_uvs_in_one_img(
+    uvs1, uvs2, MAX_DISTANCE=1, MIN_MATCHED_PIXELS=10, precise=False
+):
+    """
+    time: 213.7871 ->  4.697554
+    precise: Almost unchanged
+    """
+    if precise:
+        return matching_uvs_in_one_img_precise(
+            uvs1, uvs2, MAX_DISTANCE, MIN_MATCHED_PIXELS
+        )
+    cell1 = np.int32((uvs1 / MAX_DISTANCE).round())
+    unique1, index1 = np.unique(cell1, return_index=True, axis=0)
+    cell2 = np.int32((uvs2 / MAX_DISTANCE).round())
+    unique2, index2 = np.unique(cell2, return_index=True, axis=0)
+
+    dtype = unique1.dtype
+    dtypes = np.dtype([(str(x), dtype) for x in enumerate(unique1[0])])
+
+    intersect_, idx_unique1, idx_unique2 = np.intersect1d(
+        unique1.view(dtypes),
+        unique2.view(dtypes),
+        return_indices=True,
+        assume_unique=True,
+    )
+    if idx_unique1.size < MIN_MATCHED_PIXELS:
+        return {}
+    return dict(
+        uv_match_idx1=index1[idx_unique1],
+        uv_match_idx2=index2[idx_unique2],
     )
 
 
@@ -300,7 +332,7 @@ if __name__ == "__main__":
     # estereo23.shows((*estereo23.rectify(img2, img3)))
 
     estereo23.align_scale_with(estereo)
-    estereo23.align_scale_with(estereo)
+    estereo23.align_scale_with(estereo)  # 验证重复 align
     #%%
     stereo13 = Stereo(cam1, cam3)
     stereo13_re = Stereo.load(dict(T=estereo23.T @ estereo.T, cam1=cam1, cam2=cam3))
