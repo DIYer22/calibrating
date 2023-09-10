@@ -28,6 +28,8 @@
     - 以 stereoCalibrate 为准
 
 ## TODO list
+- [x] 光流+本质矩阵重建
+    - [ ] 本质矩阵重建加上 test
 - [ ] 新的科学的测试数据
     - 拍平文件夹, 方便查看
     - 有 multi board example, for reconstruction
@@ -40,7 +42,7 @@
 - [ ] 自动测试用例
 - [ ] 对极几何 - 基本矩阵
 ## Done
-- [x] 对极几何 - 本子矩阵
+- [x] 对极几何 - 本质矩阵
 - 和建冉沟通 calibrating 后
     - 目的: 抽象出来并共用 Cam 模型
     - [ ] ~~去掉 boxx 强依赖~~
