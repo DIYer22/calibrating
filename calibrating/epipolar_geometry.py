@@ -312,7 +312,7 @@ if __name__ == "__main__":
     print("T_diff:", T_to_deg_distance(T_gt @ inv(T_re)))
 
     if not random_test_case:
-        estereo.shows((*estereo.rectify(img1, img2)))
+        estereo.shows(*estereo.rectify(img1, img2))
 
     """
     单位尺度: 主视图的平均深度为 1 个单位深度
@@ -328,8 +328,8 @@ if __name__ == "__main__":
     uvs4 = np.concatenate(uvs4, 0)
     uvs3, uvs4 = filter_overlap_uvs(uvs3, uvs4)
     estereo23 = EssentialMatrixStereo.from_stereo(uvs3, uvs4, stereo23, baseline=1)
-    # stereo23.shows((*stereo23.rectify(img2, img3)))
-    # estereo23.shows((*estereo23.rectify(img2, img3)))
+    # stereo23.shows(*stereo23.rectify(img2, img3))
+    # estereo23.shows(*estereo23.rectify(img2, img3))
 
     estereo23.align_scale_with(estereo)
     estereo23.align_scale_with(estereo)  # 验证重复 align
@@ -339,5 +339,5 @@ if __name__ == "__main__":
 
     print(stereo13, stereo13_re)
     print(T_to_deg_distance(stereo13.T, stereo13_re.T))
-    stereo13.shows((*stereo13.rectify(img1, img3)))
-    stereo13_re.shows((*stereo13_re.rectify(img1, img3)))
+    stereo13.shows(*stereo13.rectify(img1, img3))
+    stereo13_re.shows(*stereo13_re.rectify(img1, img3))

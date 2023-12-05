@@ -30,6 +30,7 @@
 ## TODO list
 - [x] 光流+本质矩阵重建
     - [ ] 本质矩阵重建加上 test
+    - [ ] update REAMDE
 - [ ] 新的科学的测试数据
     - 拍平文件夹, 方便查看
     - 有 multi board example, for reconstruction
