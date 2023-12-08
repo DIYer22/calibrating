@@ -10,7 +10,7 @@ Calibrate camera's intrinsic/extristric, and build stereo depth camera with Open
 - Object-oriented Pythonic code style
 - Rich visualization to verify the calibration effect. e.g. [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html), [reproject-depth-vis](https://yl-data.github.io/2108.calibrating-vis/project-depth/index.html)
 - Very easy to install and run the example with [example images](https://github.com/yl-data/calibrating_example_data)
-- Mature [stereo module](calibrating/stereo.py) for correctly converting disparity to depth map that aligned with the left camera
+- Mature [stereo module](calibrating/stereo_camera.py) for correctly converting disparity to depth map that aligned with the left camera
 - Provide camera internal and external parameters standard, which can be exported as `.yaml`
 - Decoupling the feature extraction and calibration process, support both checkboard and markers(`cv2.aruco`)
 - Support [occluded markers](example/test_occlude_marker.py) like [ArUco](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html) and [ChArUco](https://docs.opencv.org/4.6.0/df/d4a/tutorial_charuco_detection.html), and multiple calibration boards in one image
@@ -46,9 +46,9 @@ Or Chinese Version: [example/checkboard_example_cn.py (中文注释)](example/ch
 
 ## ▮ Stereo
 
-**Run [stereo example](calibrating/stereo.py):**
+**Run [stereo example](calibrating/stereo_camera.py):**
 ```bash
-python3 calibrating/calibrating/stereo.py
+python3 calibrating/calibrating/stereo_camera.py
 ```
 After a while, your browser will open:
 - [stereo-rectify-vis](https://yl-data.github.io/2108.calibrating-vis/stereo/index.html)
