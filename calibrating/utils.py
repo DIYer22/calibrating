@@ -651,6 +651,8 @@ def vis_T(T, cam=None, img=None, length=0.1):
         vis = _get_vis_background_of_cam(cam)
     else:
         vis = img.copy()
+        if vis.ndim == 2:
+            vis = np.concatenate([vis[..., None]] * 3, -1)
     rvec, tvec = T_to_r_t(T)
     invert_color = T[2, 3] < 0
     if invert_color:
