@@ -534,9 +534,16 @@ def vis_depth_l1(re, gt=0, max_l1=None, overexposed=True, colorbar="auto"):
         ).reshape((-1, 1))
         colorbar_patch = np.tile(colorbar_patch, (1, colorbar_width))
         colorbar_patch = colorbar_patch.T if colorbar in ("u", "d") else colorbar_patch
-        slicee = boxx.sliceInt[
-            colorbar_start[0] : colorbar_start[0] + colorbar_width, :colorbar_length
-        ]
+        if colorbar in ("u", "d"):
+            slicee = boxx.sliceInt[
+                colorbar_start[0] : colorbar_start[0] + colorbar_width,
+                colorbar_start[1] : colorbar_start[1] + colorbar_length,
+            ]
+        elif colorbar in ("l", "r"):
+            slicee = boxx.sliceInt[
+                colorbar_start[0] : colorbar_start[0] + colorbar_length,
+                colorbar_start[1] : colorbar_start[1] + colorbar_width,
+            ]
         l1[slicee] = colorbar_patch
         mask_valid[slicee] = True
 
