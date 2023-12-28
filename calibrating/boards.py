@@ -549,6 +549,8 @@ class ArucoGridBoard(_MarkerBoard):
         if len(marker_corners) > 0:
             ids = marker_ids[:, 0]
             ids = [id for id in ids if id in self.object_points]
+            if len(ids) == 0:
+                return
             image_points = {
                 id: marker_corner[0] for id, marker_corner in zip(ids, marker_corners)
             }
