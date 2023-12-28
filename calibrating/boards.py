@@ -305,11 +305,6 @@ class _MarkerBoard(BaseBoard):
     pass
 
 
-class GridArucoBoard(_MarkerBoard):
-    def __init__(self):
-        self
-
-
 class CharucoBoard(_MarkerBoard):
     def __init__(
         self,
@@ -513,6 +508,107 @@ class CharucoBoard(_MarkerBoard):
         return boards
 
 
+class ArucoGridBoard(_MarkerBoard):
+    def __init__(
+        self,
+        grid_size=(5, 5),  # Number of markers in x and y directions
+        marker_length_mm=60.0,  # Marker side length in millimeters
+        marker_separation_mm=10.0,  # Separation between markers in millimeters
+        aruco_dict_tag=None,
+    ):
+        self.init_kwargs = dict(
+            grid_size=grid_size,
+            marker_length_mm=marker_length_mm,
+            marker_separation_mm=marker_separation_mm,
+            aruco_dict_tag=aruco_dict_tag,
+        )
+        self.grid_size = grid_size
+        if aruco_dict_tag is None:
+            aruco_dict_tag = cv2.aruco.DICT_4X4_250
+
+        self.aruco_dict_tag = aruco_dict_tag
+        self.aruco_dictionary = get_aruco_dictionary_with_start(aruco_dict_tag)
+        self.board = cv2.aruco.GridBoard(
+            grid_size,
+            marker_length_mm / 1000.0,
+            marker_separation_mm / 1000.0,
+            self.aruco_dictionary,
+        )
+        self.object_points = {
+            id: xyz for id, xyz in enumerate(self.board.getObjPoints())
+        }
+        self.object_points = self.set_origin_to_center(self.object_points)
+
+    def find_image_points(self, d):
+        img = d["img"]
+        if self.init_kwargs.get("invert_color"):
+            img = 255 - img
+        marker_corners, marker_ids, rejected_img_points = cv2.aruco.detectMarkers(
+            img, self.aruco_dictionary
+        )
+        if len(marker_corners) > 0:
+            ids = marker_ids[:, 0]
+            image_points = {
+                id: marker_corner[0] for id, marker_corner in zip(ids, marker_corners)
+            }
+            object_points = {id: self.object_points[id] for id in ids}
+            d.update(
+                ids=ids,
+                image_points=image_points,
+                object_points=object_points,
+            )
+
+    @classmethod
+    def build_with_calibration_img(
+        cls,
+        hw=A4.hw,  # Height and width of the calibration image
+        n=6,  # Number of divisions on the longest side
+        ppi=A4.ppi,  # Pixels per inch for image resolution
+        aruco_dict_tag=None,
+        **init_kwargs,
+    ):
+        height, width = hw
+
+        marker_bit = 6
+        separation_bit = 1
+        bitn = marker_bit + separation_bit  # per marker
+
+        total_bitn = n * bitn + 1
+        if n == 1:
+            bit_size = min(hw) / total_bitn
+        else:
+            bit_size = max(hw) / total_bitn
+        bit_mm = round(bit_size / ppi * 25.4, 2)
+        # marker_total_size_mm = round(marker_total_size / ppi * 25.4, 2)
+
+        # Calculate the number of markers in x and y directions
+        num_markers_x = (int(width / bit_size + 1e-5) - 1) // bitn
+        num_markers_y = (int(height / bit_size + 1e-5) - 1) // bitn
+
+        # Marker and separation sizes
+        marker_length_mm = bit_mm * marker_bit
+        marker_separation_mm = bit_mm * separation_bit
+
+        grid_size = (num_markers_x, num_markers_y)
+        init_kwargs.update(
+            grid_size=grid_size,
+            marker_length_mm=marker_length_mm,
+            marker_separation_mm=marker_separation_mm,
+            aruco_dict_tag=aruco_dict_tag,
+        )
+
+        self = cls(**init_kwargs)
+        self.calibration_img = cv2.cvtColor(
+            self.board.generateImage(
+                (width, height), marginSize=int(round(bit_size * separation_bit))
+            ),
+            cv2.COLOR_GRAY2RGB,
+        )
+        self.calibration_img_info = dict(hw=hw, ppi=ppi, **init_kwargs)
+        self.calibration_img_name = f"aruco_grid_x{grid_size[0]}y{grid_size[1]}_marker{marker_length_mm}mm_separation{marker_separation_mm}mm.png"
+        return self
+
+
 if __name__ == "__main__":
     from boxx import *
 
@@ -521,6 +617,7 @@ if __name__ == "__main__":
     board = CharucoBoard.build_with_calibration_img(
         aruco_dict_tag="DICT_4X4_250_start50"
     )
+    # board = ArucoGridBoard.build_with_calibration_img(n=2, aruco_dict_tag="DICT_4X4_250_start1")
     boxx.tree(board.init_kwargs)
     calibration_img = img = board.calibration_img
     # clip to 100 for printer to use less black ink
