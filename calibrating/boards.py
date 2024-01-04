@@ -64,7 +64,10 @@ class BaseBoard:
             d = dict(img=img_or_path)
         elif isinstance(img_or_path, str):
             d = dict(img=boxx.imread(img_or_path))
-        self.find_image_points(d)
+        if cam is not None:
+            d = cam.get_calibration_board_T(d, self)
+        else:
+            self.find_image_points(d)
         return self.vis(d, cam)
 
     @classmethod
