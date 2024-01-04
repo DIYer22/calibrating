@@ -342,7 +342,9 @@ class CharucoBoard(_MarkerBoard):
             self.object_points.update(
                 {
                     -1 - marker_id: marker_corners
-                    for marker_id, marker_corners in enumerate(self.board.objPoints)
+                    for marker_id, marker_corners in zip(
+                        self.board.getIds(), self.board.getObjPoints()
+                    )
                 }
             )
         self.object_points = self.set_origin_to_center(self.object_points)
@@ -535,7 +537,7 @@ class ArucoGridBoard(_MarkerBoard):
             self.aruco_dictionary,
         )
         self.object_points = {
-            id: xyz for id, xyz in enumerate(self.board.getObjPoints())
+            id: xyz for id, xyz in zip(self.board.getIds(), self.board.getObjPoints())
         }
         self.object_points = self.set_origin_to_center(self.object_points)
 
@@ -548,13 +550,14 @@ class ArucoGridBoard(_MarkerBoard):
         )
         if len(marker_corners) > 0:
             ids = marker_ids[:, 0]
-            ids = [id for id in ids if id in self.object_points]
-            if len(ids) == 0:
-                return
             image_points = {
-                id: marker_corner[0] for id, marker_corner in zip(ids, marker_corners)
+                id: marker_corner[0]
+                for id, marker_corner in zip(ids, marker_corners)
+                if id in self.object_points
             }
-            object_points = {id: self.object_points[id] for id in ids}
+            if len(image_points) == 0:
+                return
+            object_points = {id: self.object_points[id] for id in image_points}
             d.update(
                 ids=ids,
                 image_points=image_points,
